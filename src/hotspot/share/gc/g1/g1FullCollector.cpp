@@ -204,7 +204,7 @@ void G1FullCollector::complete_collection() {
 
   _heap->concurrent_mark()->swap_mark_bitmaps();
   // Prepare the bitmap for the next (potentially concurrent) marking.
-  _heap->concurrent_mark()->clear_next_bitmap(_heap->workers());
+  _heap->concurrent_mark()->clear_next_bitmap();
 
   _heap->prepare_heap_for_mutators();
 

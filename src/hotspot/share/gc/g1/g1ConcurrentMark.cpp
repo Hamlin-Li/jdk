@@ -680,6 +680,11 @@ void G1ConcurrentMark::clear_next_bitmap(WorkGang* workers) {
   clear_bitmap(_next_mark_bitmap, workers, false);
 }
 
+void G1ConcurrentMark::clear_next_bitmap() {
+  assert_at_safepoint_on_vm_thread();
+  _next_mark_bitmap->clear();
+}
+
 class NoteStartOfMarkHRClosure : public HeapRegionClosure {
 public:
   bool do_heap_region(HeapRegion* r) {

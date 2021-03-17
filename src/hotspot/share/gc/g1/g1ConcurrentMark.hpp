@@ -539,6 +539,7 @@ public:
 
   // Clear the next marking bitmap during safepoint.
   void clear_next_bitmap(WorkGang* workers);
+  void clear_next_bitmap();
 
   // These two methods do the work that needs to be done at the start and end of the
   // concurrent start pause.
