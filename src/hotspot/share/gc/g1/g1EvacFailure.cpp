@@ -160,8 +160,7 @@ public:
     }
   }
 
-  // Fill the memory area from start to end with filler objects, and update the BOT
-  // and the mark bitmap accordingly.
+  // Update the BOT and the mark bitmap accordingly.
   void zap_dead_objects(HeapWord* start, HeapWord* end) {
     if (start == end) {
       return;
@@ -169,27 +168,8 @@ public:
 
     size_t gap_size = pointer_delta(end, start);
     MemRegion mr(start, gap_size);
-    if (gap_size >= CollectedHeap::min_fill_size()) {
-      CollectedHeap::fill_with_objects(start, gap_size);
+    _hr->cross_threshold(start, end);
 
-      HeapWord* end_first_obj = start + cast_to_oop(start)->size();
-      _hr->cross_threshold(start, end_first_obj);
-      // Fill_with_objects() may have created multiple (i.e. two)
-      // objects, as the max_fill_size() is half a region.
-      // After updating the BOT for the first object, also update the
-      // BOT for the second object to make the BOT complete.
-      if (end_first_obj != end) {
-        _hr->cross_threshold(end_first_obj, end);
-#ifdef ASSERT
-        size_t size_second_obj = cast_to_oop(end_first_obj)->size();
-        HeapWord* end_of_second_obj = end_first_obj + size_second_obj;
-        assert(end == end_of_second_obj,
-               "More than two objects were used to fill the area from " PTR_FORMAT " to " PTR_FORMAT ", "
-               "second objects size " SIZE_FORMAT " ends at " PTR_FORMAT,
-               p2i(start), p2i(end), size_second_obj, p2i(end_of_second_obj));
-#endif
-      }
-    }
     _cm->clear_range_in_prev_bitmap(mr);
   }
 
