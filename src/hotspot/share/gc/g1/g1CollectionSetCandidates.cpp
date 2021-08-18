@@ -25,7 +25,25 @@
 #include "precompiled.hpp"
 #include "gc/g1/g1CollectionSetCandidates.hpp"
 #include "gc/g1/g1CollectionSetChooser.hpp"
+#include "gc/g1/g1_globals.hpp"
 #include "gc/g1/heapRegion.inline.hpp"
+
+void G1CollectionSetCandidates::append_evac_failure_region(HeapRegion* hr) {
+  assert(_regions != NULL, "must be");
+  assert(hr != NULL, "must be");
+  assert(_capacity >= _num_regions, "must be, %u, %u", _capacity, _num_regions);
+  _regions[_num_regions++] = hr;
+  _remaining_reclaimable_bytes += hr->reclaimable_bytes();
+}
+
+uint G1CollectionSetCandidates::calc_capacity(uint num_regions) {
+  return num_regions + num_regions / G1EvacuationFailureRegionRatioAddedIntoCSet;
+}
+
+uint G1CollectionSetCandidates::defult_per_cycle_moved_candidates() {
+  return _initial_candidates_num /
+        (G1MaxTimesAddEvacuationFailureRegionToCSet * G1EvacuationFailureRegionRatioAddedIntoCSet);
+}
 
 void G1CollectionSetCandidates::remove(uint num_regions) {
   assert(num_regions <= num_remaining(), "Trying to remove more regions (%u) than available (%u)", num_regions, num_remaining());
@@ -51,6 +69,7 @@ void G1CollectionSetCandidates::remove_from_end(uint num_remove, size_t wasted) 
   assert(reclaimable == wasted, "Recalculated reclaimable inconsistent");
 #endif
   _num_regions -= num_remove;
+  _initial_candidates_num = _num_regions;
   _remaining_reclaimable_bytes -= wasted;
 }
 
@@ -77,25 +96,37 @@ void G1CollectionSetCandidates::iterate_backwards(HeapRegionClosure* cl) {
 #ifndef PRODUCT
 void G1CollectionSetCandidates::verify() const {
   guarantee(_front_idx <= _num_regions, "Index: %u Num_regions: %u", _front_idx, _num_regions);
-  uint idx = _front_idx;
   size_t sum_of_reclaimable_bytes = 0;
-  HeapRegion *prev = NULL;
-  for (; idx < _num_regions; idx++) {
-    HeapRegion *cur = _regions[idx];
-    guarantee(cur != NULL, "Regions after _front_idx %u cannot be NULL but %u is", _front_idx, idx);
-    // The first disjunction filters out regions with objects that were explicitly
-    // pinned after being added to the collection set candidates. Archive regions
-    // should never have been added to the collection set though.
-    guarantee((cur->is_pinned() && !cur->is_archive()) ||
-              G1CollectionSetChooser::should_add(cur),
-              "Region %u should be eligible for addition.", cur->hrm_index());
-    if (prev != NULL) {
-      guarantee(prev->gc_efficiency() >= cur->gc_efficiency(),
-                "GC efficiency for region %u: %1.4f smaller than for region %u: %1.4f",
-                prev->hrm_index(), prev->gc_efficiency(), cur->hrm_index(), cur->gc_efficiency());
+  uint idx_and_limit[2][2] = {
+    {_front_idx, _initial_candidates_num},
+    {_front_idx > _initial_candidates_num ? _front_idx : _initial_candidates_num, _num_regions}
+  };
+  for (int i = 0; i < 2; i++) {
+    uint idx = idx_and_limit[i][0];
+    uint limit = idx_and_limit[i][1];
+    HeapRegion *prev = NULL;
+    for (; idx < limit; idx++) {
+      HeapRegion *cur = _regions[idx];
+      guarantee(cur != NULL, "Regions after _front_idx %u cannot be NULL but %u is", _front_idx, idx);
+      // The first disjunction filters out regions with objects that were explicitly
+      // pinned after being added to the collection set candidates. Archive regions
+      // should never have been added to the collection set though.
+      guarantee((cur->is_pinned() && !cur->is_archive()) ||
+                G1CollectionSetChooser::should_add(cur),
+                "Region %u (at %u) should be eligible for addition. %s, %s, %s, %s",
+                cur->hrm_index(), idx,
+                BOOL_TO_STR(!cur->is_young()),
+                BOOL_TO_STR(!cur->is_pinned()),
+                BOOL_TO_STR(G1CollectionSetChooser::region_occupancy_low_enough_for_evac(cur->live_bytes())),
+                BOOL_TO_STR(cur->rem_set()->is_complete()));
+      if (i == 0 /* TODO: FIXME */ && prev != NULL) {
+        guarantee(prev->gc_efficiency() >= cur->gc_efficiency(),
+                  "GC efficiency for region %u: %1.4f smaller than for region %u: %1.4f",
+                  prev->hrm_index(), prev->gc_efficiency(), cur->hrm_index(), cur->gc_efficiency());
+      }
+      sum_of_reclaimable_bytes += cur->reclaimable_bytes();
+      prev = cur;
     }
-    sum_of_reclaimable_bytes += cur->reclaimable_bytes();
-    prev = cur;
   }
   guarantee(sum_of_reclaimable_bytes == _remaining_reclaimable_bytes,
             "Inconsistent remaining_reclaimable bytes, remaining " SIZE_FORMAT " calculated " SIZE_FORMAT,

@@ -26,6 +26,7 @@
 #include "gc/g1/g1CollectedHeap.inline.hpp"
 #include "gc/g1/g1CollectionSet.hpp"
 #include "gc/g1/g1CollectionSetCandidates.hpp"
+#include "gc/g1/g1CollectionSetChooser.hpp"
 #include "gc/g1/g1CollectorState.hpp"
 #include "gc/g1/g1HotCardCache.hpp"
 #include "gc/g1/g1ParScanThreadState.hpp"
@@ -61,6 +62,12 @@ G1CollectionSet::G1CollectionSet(G1CollectedHeap* g1h, G1Policy* policy) :
   _collection_set_regions(NULL),
   _collection_set_cur_length(0),
   _collection_set_max_length(0),
+  _evac_failure_regions(NULL),
+  _evac_failure_regions_cur_length(0),
+  _times_add_evac_failure_region_into_candidates(0),
+  _prev_skip_evac_failure_process_due_to_CM(false),
+  _prev_moved_candidates(0),
+  _current_moved_candidates(0),
   _num_optional_regions(0),
   _bytes_used_before(0),
   _recorded_rs_length(0),
@@ -77,6 +84,7 @@ G1CollectionSet::G1CollectionSet(G1CollectedHeap* g1h, G1Policy* policy) :
 G1CollectionSet::~G1CollectionSet() {
   FREE_C_HEAP_ARRAY(uint, _collection_set_regions);
   FREE_C_HEAP_ARRAY(IncCollectionSetRegionStat, _inc_collection_set_stats);
+  FREE_C_HEAP_ARRAY(uint, _evac_failure_regions);
   free_optional_regions();
   clear_candidates();
 }
@@ -100,6 +108,164 @@ void G1CollectionSet::initialize(uint max_region_length) {
   _collection_set_max_length = max_region_length;
   _collection_set_regions = NEW_C_HEAP_ARRAY(uint, max_region_length, mtGC);
   _inc_collection_set_stats = NEW_C_HEAP_ARRAY(IncCollectionSetRegionStat, max_region_length, mtGC);
+  _evac_failure_regions = NEW_C_HEAP_ARRAY(uint, max_region_length, mtGC);
+}
+
+bool G1CollectionSet::skip_evac_failure_process() {
+  // We skip adding evacuation failure regions into cset or candidates at following conditions.
+  //   1. when we are during CM or starting gc before CM.
+  _prev_skip_evac_failure_process_due_to_CM
+        = G1CollectedHeap::heap()->collector_state()->in_concurrent_start_gc()
+          || G1CollectedHeap::heap()->collector_state()->mark_or_rebuild_in_progress();
+  if (_prev_skip_evac_failure_process_due_to_CM) {
+    return true;
+  }
+  //   2. when G1AddEvacuationFailureRegionIntoCSetAtMixedGC is not enable and we're in mixed gc.
+  if (!G1AddEvacuationFailureRegionIntoCSetAtMixedGC
+      && G1CollectedHeap::heap()->collector_state()->in_mixed_phase()) {
+    return true;
+  }
+  //   3. when G1AddEvacuationFailureRegionIntoCSetAtYoungGC is not enable and we're in normal young gc.
+  if (!G1AddEvacuationFailureRegionIntoCSetAtYoungGC
+      && G1CollectedHeap::heap()->collector_state()->in_young_only_phase()) {
+    return true;
+  }
+  return false;
+}
+
+void G1CollectionSet::finalize_evac_failure_part() {
+  if (G1CollectedHeap::heap()->collector_state()->in_young_only_phase()) {
+    add_to_collection_set_directly();
+  } else if (G1CollectedHeap::heap()->collector_state()->in_mixed_phase()) {
+    add_to_candidates();
+  }
+}
+
+void G1CollectionSet::add_to_collection_set_directly() {
+  if (skip_evac_failure_process()) {
+    log_trace(gc, phases)("Skip add evac failure regions to collection set.");
+    clear_evac_failure_regions();
+    return;
+  }
+
+  log_trace(gc, phases) ("Evacuation collection set (initial directly): "
+                        SIZE_FORMAT, _evac_failure_regions_cur_length);
+  for (uint i = 0; i < _evac_failure_regions_cur_length; i++) {
+
+    HeapRegion* r = _g1h->region_at(_evac_failure_regions[i]);
+    assert(r->is_old(), "Must be");
+    assert(r->rem_set()->is_complete(), "test");
+
+    _g1h->clear_region_attr(r);
+    add_old_region(r);
+  }
+
+  clear_evac_failure_regions();
+}
+
+void G1CollectionSet::add_to_candidates() {
+  if (_prev_skip_evac_failure_process_due_to_CM) {
+    _times_add_evac_failure_region_into_candidates = 0;
+  }
+  if (skip_evac_failure_process()) {
+    log_trace(gc, phases)("Skip add evac failure regions to candidates.");
+    clear_evac_failure_regions();
+    return;
+  }
+  _times_add_evac_failure_region_into_candidates++;
+
+  log_trace(gc, phases) ("Evacuation collection set (initial append candidates): "
+                        SIZE_FORMAT, _evac_failure_regions_cur_length);
+  for (uint i = 0; i < _evac_failure_regions_cur_length; i++) {
+
+    HeapRegion* r = _g1h->region_at(_evac_failure_regions[i]);
+    assert(r->is_old(), "Must be");
+    assert(r->rem_set()->is_complete(), "test");
+
+    assert(candidates() != NULL, "Must be");
+    candidates()->append_evac_failure_region(r);
+  }
+  candidates()->verify();
+  // candidates()->sort();
+
+  clear_evac_failure_regions();
+}
+
+void G1CollectionSet::record_evac_failure_region(HeapRegion* hr) {
+  if (skip_evac_failure_process()) {
+    log_trace(gc, phases)("Skip record evac failure regions to candidates.");
+    return;
+  }
+  if (G1CollectedHeap::heap()->collector_state()->in_mixed_phase()
+      && _times_add_evac_failure_region_into_candidates >= G1MaxTimesAddEvacuationFailureRegionToCSet) {
+    log_trace(gc, phases)("Skip record evac failure regions to candidates as we hit "
+                          "the limit of G1MaxTimesAddEvacuationFailureRegionToCSet.");
+    return;
+  }
+
+  // Needs to recalculate the gc efficiency for this region.
+  hr->calc_gc_efficiency();
+
+  uint region_idx = hr->hrm_index();
+  assert(hr->is_old(), "Must be");
+  size_t idx = Atomic::fetch_and_add(&_evac_failure_regions_cur_length, 1u);
+  _evac_failure_regions[idx] = region_idx;
+}
+
+static int order_regions(uint region_idx1, uint region_idx2) {
+  HeapRegion* hr1 = G1CollectedHeap::heap()->region_at(region_idx1);
+  HeapRegion* hr2 = G1CollectedHeap::heap()->region_at(region_idx2);
+  return G1CollectionSetChooser::order_regions_by_gc_efficiency(hr1, hr2);
+}
+
+void G1CollectionSet::prepare_evac_failure_regions() {
+  if (skip_evac_failure_process()) {
+    return;
+  }
+  // TODO: FXIME?? sort all appended candidates, rather than just this batch of candidates.
+  //   Seems it does not help too much.
+  QuickSort::sort(_evac_failure_regions, _evac_failure_regions_cur_length, order_regions, true);
+
+#ifdef ASSERT
+  for (uint i = 0; i < _evac_failure_regions_cur_length-1; i++) {
+    HeapRegion* r1 = G1CollectedHeap::heap()->region_at(_evac_failure_regions[i]);
+    HeapRegion* r2 = G1CollectedHeap::heap()->region_at(_evac_failure_regions[i+1]);
+    assert(r1->reclaimable_bytes() >= r2->reclaimable_bytes(),
+           "Region reclaimable bytes are not right for region %u and %u, "
+           "relaimable bytes: " SIZE_FORMAT ", " SIZE_FORMAT,
+           r1->hrm_index(), r2->hrm_index(), r1->reclaimable_bytes(), r2->reclaimable_bytes());
+  }
+#endif
+
+  size_t limit = _evac_failure_regions_cur_length;
+  if (G1CollectedHeap::heap()->collector_state()->in_young_only_phase()) {
+    limit = MIN2(_evac_failure_regions_cur_length, G1MaxRegionsAddIntoCSetDirectly);
+  } else if (G1CollectedHeap::heap()->collector_state()->in_mixed_phase()) {
+    size_t moved_candidates = _prev_moved_candidates > 0 ?
+                            _prev_moved_candidates / G1EvacuationFailureRegionRatioAddedIntoCSet :
+                            candidates()->defult_per_cycle_moved_candidates();
+    limit = MIN2(_evac_failure_regions_cur_length, moved_candidates);
+    limit = MIN2(candidates()->remaining_capacity(), limit);
+    log_trace(gc, phases) ("Evacuation collection set (limit): " SIZE_FORMAT ", %u, %u",
+                           limit,
+                           _times_add_evac_failure_region_into_candidates,
+                           candidates()->initial_candidates_num());
+  }
+
+  uint offset = 0;
+  for (uint i = 0; i < _evac_failure_regions_cur_length && offset < limit; i++) {
+    HeapRegion* r = _g1h->region_at(_evac_failure_regions[i]);
+    if (!G1CollectionSetChooser::region_occupancy_low_enough_for_evac(r->live_bytes())) {
+      continue;
+    }
+    _evac_failure_regions[offset++] = _evac_failure_regions[i];
+    // When a region first gets evacuation failure from young(to survivor), remset is not requireed,
+    // when it from old(young->old or old-> old), its remset is recorded.
+    // when a region gets evacuation failure the right next time after the first time, its remset is
+    // not recorded unless its state is tracked.
+    r->rem_set()->set_state_complete();
+  }
+  _evac_failure_regions_cur_length = offset;
 }
 
 void G1CollectionSet::free_optional_regions() {
@@ -431,6 +597,7 @@ double G1CollectionSet::finalize_young_part(double target_pause_time_ms, G1Survi
   uint eden_region_length = _g1h->eden_regions_count();
   uint survivor_region_length = survivors->length();
   init_region_lengths(eden_region_length, survivor_region_length);
+  log_trace(gc, phases) ("Evacuation collection set (initial young part): %u", eden_region_length+survivor_region_length);
 
   verify_young_cset_indices();
 
@@ -477,6 +644,7 @@ void G1CollectionSet::finalize_old_part(double time_remaining_ms) {
 
     // Prepare initial old regions.
     move_candidates_to_collection_set(num_initial_old_regions);
+    log_trace(gc, phases) ("Evacuation collection set (initial old part): %u", num_initial_old_regions);
 
     // Prepare optional old regions for evacuation.
     uint candidate_idx = candidates()->cur_idx();
@@ -510,10 +678,13 @@ void G1CollectionSet::move_candidates_to_collection_set(uint num_old_candidate_r
   candidates()->remove(num_old_candidate_regions);
 
   candidates()->verify();
+  _current_moved_candidates += num_old_candidate_regions;
 }
 
 void G1CollectionSet::finalize_initial_collection_set(double target_pause_time_ms, G1SurvivorRegions* survivor) {
+  _current_moved_candidates = 0;
   double time_remaining_ms = finalize_young_part(target_pause_time_ms, survivor);
+  finalize_evac_failure_part();
   finalize_old_part(time_remaining_ms);
 }
 
@@ -527,6 +698,7 @@ bool G1CollectionSet::finalize_optional_for_evacuation(double remaining_pause_ti
                                                      num_selected_regions);
 
   move_candidates_to_collection_set(num_selected_regions);
+  log_trace(gc, phases) ("Evacuation collection set (optional old part): %u", num_selected_regions);
 
   _num_optional_regions -= num_selected_regions;
 
@@ -550,6 +722,7 @@ void G1CollectionSet::abandon_optional_collection_set(G1ParScanThreadStateSet* p
   free_optional_regions();
 
   _g1h->verify_region_attr_remset_update();
+  _prev_moved_candidates = _current_moved_candidates;
 }
 
 #ifdef ASSERT

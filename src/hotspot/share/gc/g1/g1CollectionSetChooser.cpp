@@ -31,37 +31,6 @@
 #include "runtime/atomic.hpp"
 #include "utilities/quickSort.hpp"
 
-// Order regions according to GC efficiency. This will cause regions with a lot
-// of live objects and large remembered sets to end up at the end of the array.
-// Given that we might skip collecting the last few old regions, if after a few
-// mixed GCs the remaining have reclaimable bytes under a certain threshold, the
-// hope is that the ones we'll skip are ones with both large remembered sets and
-// a lot of live objects, not the ones with just a lot of live objects if we
-// ordered according to the amount of reclaimable bytes per region.
-static int order_regions(HeapRegion* hr1, HeapRegion* hr2) {
-  // Make sure that NULL entries are moved to the end.
-  if (hr1 == NULL) {
-    if (hr2 == NULL) {
-      return 0;
-    } else {
-      return 1;
-    }
-  } else if (hr2 == NULL) {
-    return -1;
-  }
-
-  double gc_eff1 = hr1->gc_efficiency();
-  double gc_eff2 = hr2->gc_efficiency();
-
-  if (gc_eff1 > gc_eff2) {
-    return -1;
-  } if (gc_eff1 < gc_eff2) {
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
 // Determine collection set candidates: For all regions determine whether they
 // should be a collection set candidates, calculate their efficiency, sort and
 // return them as G1CollectionSetCandidates instance.
@@ -134,12 +103,13 @@ class G1BuildCandidateRegionsTask : public AbstractGangTask {
       for (uint i = _cur_claim_idx; i < _max_size; i++) {
         assert(_data[i] == NULL, "must be");
       }
-      QuickSort::sort(_data, _cur_claim_idx, order_regions, true);
+      QuickSort::sort(_data, _cur_claim_idx, G1CollectionSetChooser::order_regions_by_gc_efficiency, true);
       for (uint i = num_regions; i < _max_size; i++) {
         assert(_data[i] == NULL, "must be");
       }
       for (uint i = 0; i < num_regions; i++) {
         dest[i] = _data[i];
+        // log_warning(gc, phases) ("initial candidates in sort_and_copy_into: %u", dest[i]->hrm_index());
       }
     }
   };
@@ -237,10 +207,12 @@ public:
   }
 
   G1CollectionSetCandidates* get_sorted_candidates() {
-    HeapRegion** regions = NEW_C_HEAP_ARRAY(HeapRegion*, _num_regions_added, mtGC);
+    uint capacity = G1CollectionSetCandidates::calc_capacity(_num_regions_added);
+    HeapRegion** regions = NEW_C_HEAP_ARRAY(HeapRegion*, capacity, mtGC);
     _result.sort_and_copy_into(regions, _num_regions_added);
     return new G1CollectionSetCandidates(regions,
                                          _num_regions_added,
+                                         capacity,
                                          _reclaimable_bytes_added);
   }
 };
@@ -322,4 +294,28 @@ G1CollectionSetCandidates* G1CollectionSetChooser::build(WorkGang* workers, uint
   prune(result);
   result->verify();
   return result;
+}
+
+int G1CollectionSetChooser::order_regions_by_gc_efficiency(HeapRegion* hr1, HeapRegion* hr2) {
+  // Make sure that NULL entries are moved to the end.
+  if (hr1 == NULL) {
+    if (hr2 == NULL) {
+      return 0;
+    } else {
+      return 1;
+    }
+  } else if (hr2 == NULL) {
+    return -1;
+  }
+
+  double gc_eff1 = hr1->gc_efficiency();
+  double gc_eff2 = hr2->gc_efficiency();
+
+  if (gc_eff1 > gc_eff2) {
+    return -1;
+  } if (gc_eff1 < gc_eff2) {
+    return 1;
+  } else {
+    return 0;
+  }
 }

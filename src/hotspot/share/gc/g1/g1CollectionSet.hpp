@@ -150,6 +150,13 @@ class G1CollectionSet {
   volatile size_t _collection_set_cur_length;
   size_t _collection_set_max_length;
 
+  uint*             _evac_failure_regions;
+  volatile size_t   _evac_failure_regions_cur_length;
+  uint              _times_add_evac_failure_region_into_candidates;
+  bool              _prev_skip_evac_failure_process_due_to_CM;
+  size_t            _prev_moved_candidates;
+  size_t            _current_moved_candidates;
+
   // When doing mixed collections we can add old regions to the collection set, which
   // will be collected only if there is enough time. We call these optional regions.
   // This member records the current number of regions that are of that type that
@@ -255,6 +262,17 @@ class G1CollectionSet {
   // regions we might be able to evacuate in this pause.
   void finalize_old_part(double time_remaining_ms);
 
+  // Add the regions which have failed evacuation into current collection set or candidates.
+  void finalize_evac_failure_part();
+  // Add the regions which have failed evacuation into current collection set directly,
+  // we do this at normal young gc.
+  void add_to_collection_set_directly();
+  // Add the regions which have failed evacuation into candidates only, these regions might
+  // be added into collection set later, we do this at mixed gc.
+  void add_to_candidates();
+  // Should we skip adding evacuation failure regions into cset or candidates?
+  bool skip_evac_failure_process();
+
   // Iterate the part of the collection set given by the offset and length applying the given
   // HeapRegionClosure. The worker_id will determine where in the part to start the iteration
   // to allow for more efficient parallel iteration.
@@ -333,6 +351,12 @@ public:
   void reset_bytes_used_before() {
     _bytes_used_before = 0;
   }
+
+  // Record the region which failed evacuation.
+  // These regions will be added to collection set of next gc cycle.
+  void record_evac_failure_region(HeapRegion* hr);
+  void prepare_evac_failure_regions();
+  void clear_evac_failure_regions() { _evac_failure_regions_cur_length = 0; }
 
   // Finalize the initial collection set consisting of all young regions potentially a
   // few old gen regions.

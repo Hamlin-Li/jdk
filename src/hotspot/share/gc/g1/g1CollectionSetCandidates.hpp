@@ -26,6 +26,7 @@
 #define SHARE_GC_G1_G1COLLECTIONSETCANDIDATES_HPP
 
 #include "gc/g1/g1CollectionSetCandidates.hpp"
+#include "gc/g1/g1_globals.hpp"
 #include "gc/shared/workgroup.hpp"
 #include "memory/allocation.hpp"
 #include "runtime/globals.hpp"
@@ -41,6 +42,8 @@ class HeapRegionClosure;
 class G1CollectionSetCandidates : public CHeapObj<mtGC> {
   HeapRegion** _regions;
   uint _num_regions; // Total number of regions in the collection set candidate set.
+  uint _initial_candidates_num;
+  const uint _capacity;
 
   // The sum of bytes that can be reclaimed in the remaining set of collection
   // set candidates.
@@ -50,18 +53,31 @@ class G1CollectionSetCandidates : public CHeapObj<mtGC> {
   uint _front_idx;
 
 public:
-  G1CollectionSetCandidates(HeapRegion** regions, uint num_regions, size_t remaining_reclaimable_bytes) :
+  G1CollectionSetCandidates(HeapRegion** regions, uint num_regions, uint capacity, size_t remaining_reclaimable_bytes) :
     _regions(regions),
     _num_regions(num_regions),
+    _initial_candidates_num(num_regions),
+    _capacity(capacity),
     _remaining_reclaimable_bytes(remaining_reclaimable_bytes),
-    _front_idx(0) { }
+    _front_idx(0) {
+    log_trace(gc, phases) ("Evacuation collection set (initial candidates): %u", _num_regions);
+  }
 
   ~G1CollectionSetCandidates() {
     FREE_C_HEAP_ARRAY(HeapRegion*, _regions);
   }
 
+  void append_evac_failure_region(HeapRegion* hr);
+
   // Returns the total number of collection set candidate old regions added.
   uint num_regions() { return _num_regions; }
+  uint initial_candidates_num() { return _initial_candidates_num; }
+  size_t remaining_capacity() {
+    assert(_capacity >= _num_regions, "must be");
+    return _capacity - _num_regions;
+  }
+  static uint calc_capacity(uint num_regions);
+  uint defult_per_cycle_moved_candidates();
 
   uint cur_idx() const { return _front_idx; }
 

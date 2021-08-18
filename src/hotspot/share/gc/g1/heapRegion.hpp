@@ -511,7 +511,7 @@ public:
   void note_self_forwarding_removal_end(size_t marked_bytes);
 
   uint index_in_opt_cset() const {
-    assert(has_index_in_opt_cset(), "Opt cset index not set.");
+    assert(has_index_in_opt_cset(), "Opt cset index not set, %u.", hrm_index());
     return _index_in_opt_cset;
   }
   bool has_index_in_opt_cset() const { return _index_in_opt_cset != InvalidCSetIndex; }

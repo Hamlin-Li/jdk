@@ -3921,6 +3921,7 @@ void G1CollectedHeap::post_evacuate_cleanup_2(PreservedMarksSet* preserved_marks
   {
     G1PostEvacuateCollectionSetCleanupTask2 cl(preserved_marks, rdcqs, evacuation_info, surviving_young_words);
     run_batch_task(&cl);
+    G1CollectedHeap::heap()->collection_set()->prepare_evac_failure_regions();
   }
   phase_times()->record_post_evacuate_cleanup_task_2_time((Ticks::now() - start).seconds() * 1000.0);
 }

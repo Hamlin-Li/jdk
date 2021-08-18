@@ -60,6 +60,15 @@ public:
   // Build and return set of collection set candidates sorted by decreasing gc
   // efficiency.
   static G1CollectionSetCandidates* build(WorkGang* workers, uint max_num_regions);
+
+  // Order regions according to GC efficiency. This will cause regions with a lot
+  // of live objects and large remembered sets to end up at the end of the array.
+  // Given that we might skip collecting the last few old regions, if after a few
+  // mixed GCs the remaining have reclaimable bytes under a certain threshold, the
+  // hope is that the ones we'll skip are ones with both large remembered sets and
+  // a lot of live objects, not the ones with just a lot of live objects if we
+  // ordered according to the amount of reclaimable bytes per region.
+  static int order_regions_by_gc_efficiency(HeapRegion* hr1, HeapRegion* hr2);
 };
 
 #endif // SHARE_GC_G1_G1COLLECTIONSETCHOOSER_HPP

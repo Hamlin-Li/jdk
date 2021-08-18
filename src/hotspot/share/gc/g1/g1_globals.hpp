@@ -343,8 +343,25 @@
   product(bool, G1UsePreventiveGC, true, DIAGNOSTIC,                        \
           "Allows collections to be triggered proactively based on the      \
            number of free regions and the expected survival rates in each   \
-           section of the heap.")
-
+           section of the heap.")                                           \
+                                                                            \
+  product(uintx, G1MaxTimesAddEvacuationFailureRegionToCSet,                \
+          G1MixedGCCountTarget,                                             \
+          "Maximum number of times adding evacuation failure regions into " \
+          "CSet during Mixed GC (in fact, it's added into candidates).")    \
+          range(0, 100)                                                     \
+  product(uintx, G1MaxRegionsAddIntoCSetDirectly, 5,                        \
+          "Maximum number of regions added into CSet directly "             \
+          "during Normal Young GC")                                         \
+          range(0, 100)                                                     \
+  product(uintx, G1EvacuationFailureRegionRatioAddedIntoCSet, 5,            \
+          "Ratio of evacuation failure regions added into CSet "            \
+          "during Mixed GC (in fact, it's added into candidates).")         \
+          range(1, 10)                                                      \
+  product(bool, G1AddEvacuationFailureRegionIntoCSetAtYoungGC, false,       \
+          "Support add evacuation failure regions into CSet at Young GC")   \
+  product(bool, G1AddEvacuationFailureRegionIntoCSetAtMixedGC, true,        \
+          "Support add evacuation failure regions into CSet at Mixed GC")
 // end of GC_G1_FLAGS
 
 #endif // SHARE_GC_G1_G1_GLOBALS_HPP

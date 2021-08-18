@@ -106,6 +106,8 @@ void HeapRegion::handle_evacuation_failure() {
   clear_young_index_in_cset();
   set_old();
   _next_marked_bytes = 0;
+
+  G1CollectedHeap::heap()->collection_set()->record_evac_failure_region(this);
 }
 
 void HeapRegion::unlink_from_list() {
