@@ -148,9 +148,10 @@ void G1CollectionSet::add_to_collection_set_directly() {
     return;
   }
 
+  size_t length = Atomic::load(&_evac_failure_regions_cur_length);
   log_trace(gc, phases) ("Evacuation collection set (initial directly): "
-                        SIZE_FORMAT, _evac_failure_regions_cur_length);
-  for (uint i = 0; i < _evac_failure_regions_cur_length; i++) {
+                        SIZE_FORMAT, length);
+  for (uint i = 0; i < length; i++) {
 
     HeapRegion* r = _g1h->region_at(_evac_failure_regions[i]);
     assert(r->is_old(), "Must be");
@@ -174,9 +175,10 @@ void G1CollectionSet::add_to_candidates() {
   }
   _times_add_evac_failure_region_into_candidates++;
 
+  size_t length = Atomic::load(&_evac_failure_regions_cur_length);
   log_trace(gc, phases) ("Evacuation collection set (initial append candidates): "
-                        SIZE_FORMAT, _evac_failure_regions_cur_length);
-  for (uint i = 0; i < _evac_failure_regions_cur_length; i++) {
+                        SIZE_FORMAT, length);
+  for (uint i = 0; i < length; i++) {
 
     HeapRegion* r = _g1h->region_at(_evac_failure_regions[i]);
     assert(r->is_old(), "Must be");
@@ -222,29 +224,29 @@ void G1CollectionSet::prepare_evac_failure_regions() {
   if (skip_evac_failure_process()) {
     return;
   }
+  size_t length = Atomic::load(&_evac_failure_regions_cur_length);
   // TODO: FXIME?? sort all appended candidates, rather than just this batch of candidates.
   //   Seems it does not help too much.
-  QuickSort::sort(_evac_failure_regions, _evac_failure_regions_cur_length, order_regions, true);
+  QuickSort::sort(_evac_failure_regions, length, order_regions, true);
 
-#ifdef ASSERT
-  for (uint i = 0; i < _evac_failure_regions_cur_length-1; i++) {
-    HeapRegion* r1 = G1CollectedHeap::heap()->region_at(_evac_failure_regions[i]);
-    HeapRegion* r2 = G1CollectedHeap::heap()->region_at(_evac_failure_regions[i+1]);
-    assert(r1->reclaimable_bytes() >= r2->reclaimable_bytes(),
+  DEBUG_ONLY(
+  for (uint i = 1; i < length; i++) {
+    HeapRegion* r1 = G1CollectedHeap::heap()->region_at(_evac_failure_regions[i-1]);
+    HeapRegion* r2 = G1CollectedHeap::heap()->region_at(_evac_failure_regions[i]);
+    assert(r1->gc_efficiency() >= r2->gc_efficiency(),
            "Region reclaimable bytes are not right for region %u and %u, "
-           "relaimable bytes: " SIZE_FORMAT ", " SIZE_FORMAT,
-           r1->hrm_index(), r2->hrm_index(), r1->reclaimable_bytes(), r2->reclaimable_bytes());
-  }
-#endif
+           "relaimable bytes: %f , %f",
+           r1->hrm_index(), r2->hrm_index(), r1->gc_efficiency(), r2->gc_efficiency());
+  })
 
-  size_t limit = _evac_failure_regions_cur_length;
+  size_t limit = length;
   if (G1CollectedHeap::heap()->collector_state()->in_young_only_phase()) {
-    limit = MIN2(_evac_failure_regions_cur_length, G1MaxRegionsAddIntoCSetDirectly);
+    limit = MIN2(length, G1MaxRegionsAddIntoCSetDirectly);
   } else if (G1CollectedHeap::heap()->collector_state()->in_mixed_phase()) {
     size_t moved_candidates = _prev_moved_candidates > 0 ?
                             _prev_moved_candidates / G1EvacuationFailureRegionRatioAddedIntoCSet :
                             candidates()->defult_per_cycle_moved_candidates();
-    limit = MIN2(_evac_failure_regions_cur_length, moved_candidates);
+    limit = MIN2(length, moved_candidates);
     limit = MIN2(candidates()->remaining_capacity(), limit);
     log_trace(gc, phases) ("Evacuation collection set (limit): " SIZE_FORMAT ", %u, %u",
                            limit,
@@ -252,8 +254,8 @@ void G1CollectionSet::prepare_evac_failure_regions() {
                            candidates()->initial_candidates_num());
   }
 
-  uint offset = 0;
-  for (uint i = 0; i < _evac_failure_regions_cur_length && offset < limit; i++) {
+  size_t offset = 0;
+  for (uint i = 0; i < length && offset < limit; i++) {
     HeapRegion* r = _g1h->region_at(_evac_failure_regions[i]);
     if (!G1CollectionSetChooser::region_occupancy_low_enough_for_evac(r->live_bytes())) {
       continue;
@@ -265,7 +267,7 @@ void G1CollectionSet::prepare_evac_failure_regions() {
     // not recorded unless its state is tracked.
     r->rem_set()->set_state_complete();
   }
-  _evac_failure_regions_cur_length = offset;
+  Atomic::store(&_evac_failure_regions_cur_length, offset);
 }
 
 void G1CollectionSet::free_optional_regions() {

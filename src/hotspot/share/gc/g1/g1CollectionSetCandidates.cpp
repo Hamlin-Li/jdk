@@ -119,7 +119,7 @@ void G1CollectionSetCandidates::verify() const {
                 BOOL_TO_STR(!cur->is_pinned()),
                 BOOL_TO_STR(G1CollectionSetChooser::region_occupancy_low_enough_for_evac(cur->live_bytes())),
                 BOOL_TO_STR(cur->rem_set()->is_complete()));
-      if (i == 0 /* TODO: FIXME */ && prev != NULL) {
+      if (i == 0 /* TODO: FIXME?? necessary?? */ && prev != NULL) {
         guarantee(prev->gc_efficiency() >= cur->gc_efficiency(),
                   "GC efficiency for region %u: %1.4f smaller than for region %u: %1.4f",
                   prev->hrm_index(), prev->gc_efficiency(), cur->hrm_index(), cur->gc_efficiency());

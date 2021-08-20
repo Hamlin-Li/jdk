@@ -356,7 +356,7 @@ public:
   // These regions will be added to collection set of next gc cycle.
   void record_evac_failure_region(HeapRegion* hr);
   void prepare_evac_failure_regions();
-  void clear_evac_failure_regions() { _evac_failure_regions_cur_length = 0; }
+  void clear_evac_failure_regions() { Atomic::store(&_evac_failure_regions_cur_length, (size_t)0); }
 
   // Finalize the initial collection set consisting of all young regions potentially a
   // few old gen regions.
