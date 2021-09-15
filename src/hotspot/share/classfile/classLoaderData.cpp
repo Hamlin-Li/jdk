@@ -79,6 +79,7 @@
 #include "utilities/ostream.hpp"
 
 ClassLoaderData * ClassLoaderData::_the_null_class_loader_data = NULL;
+Mutex* ClassLoaderData::_shared_metaspace_lock = NULL;
 
 void ClassLoaderData::init_null_class_loader_data() {
   assert(_the_null_class_loader_data == NULL, "cannot initialize twice");
@@ -96,6 +97,10 @@ void ClassLoaderData::init_null_class_loader_data() {
     _the_null_class_loader_data->print_value_on(&ls);
     ls.cr();
   }
+
+  _shared_metaspace_lock = new Mutex(Mutex::leaf+1,
+                                     "Metaspace allocation lock (shared)",
+                                     Mutex::_safepoint_check_never);
 }
 
 // Obtain and set the class loader's name within the ClassLoaderData so
@@ -133,8 +138,10 @@ void ClassLoaderData::initialize_name(Handle class_loader) {
 
 ClassLoaderData::ClassLoaderData(Handle h_class_loader, bool has_class_mirror_holder) :
   _metaspace(NULL),
-  _metaspace_lock(new Mutex(Mutex::leaf+1, "Metaspace allocation lock",
-                            Mutex::_safepoint_check_never)),
+  _metaspace_lock(has_class_mirror_holder ?
+                    _shared_metaspace_lock :
+                    new Mutex(Mutex::leaf+1, "Metaspace allocation lock",
+                              Mutex::_safepoint_check_never)),
   _unloading(false), _has_class_mirror_holder(has_class_mirror_holder),
   _modified_oops(true),
   // A non-strong hidden class loader data doesn't have anything to keep
@@ -148,6 +155,7 @@ ClassLoaderData::ClassLoaderData(Handle h_class_loader, bool has_class_mirror_ho
   _deallocate_list(NULL),
   _next(NULL),
   _class_loader_klass(NULL), _name(NULL), _name_and_id(NULL) {
+  assert(_shared_metaspace_lock != NULL || h_class_loader.is_null(), "Must be");
 
   if (!h_class_loader.is_null()) {
     _class_loader = _handles.add(h_class_loader());
@@ -711,7 +719,9 @@ ClassLoaderData::~ClassLoaderData() {
   }
 
   // Delete lock
-  delete _metaspace_lock;
+  if (!_has_class_mirror_holder) {
+    delete _metaspace_lock;
+  }
 
   // Delete free list
   if (_deallocate_list != NULL) {
@@ -773,7 +783,9 @@ ClassLoaderMetaspace* ClassLoaderData::metaspace_non_null() {
         assert (class_loader() == NULL, "Must be");
         metaspace = new ClassLoaderMetaspace(_metaspace_lock, Metaspace::BootMetaspaceType);
       } else if (has_class_mirror_holder()) {
-        metaspace = new ClassLoaderMetaspace(_metaspace_lock, Metaspace::ClassMirrorHolderMetaspaceType);
+        metaspace = new ClassLoaderMetaspace(_metaspace_lock,
+                                             Metaspace::ClassMirrorHolderMetaspaceType,
+                                             this);
       } else if (class_loader()->is_a(vmClasses::reflect_DelegatingClassLoader_klass())) {
         metaspace = new ClassLoaderMetaspace(_metaspace_lock, Metaspace::ReflectionMetaspaceType);
       } else {

@@ -75,7 +75,7 @@ struct ArenaStats;
 //
 
 class MetaspaceArena : public CHeapObj<mtClass> {
-
+protected:
   // Reference to an outside lock to use for synchronizing access to this arena.
   //  This lock is normally owned by the CLD which owns the ClassLoaderMetaspace which
   //  owns this arena.
@@ -112,14 +112,16 @@ class MetaspaceArena : public CHeapObj<mtClass> {
 
   // free block list
   FreeBlocks* fbl() const                       { return _fbl; }
-  void add_allocation_to_fbl(MetaWord* p, size_t word_size);
+  virtual void add_allocation_to_fbl(MetaWord* p, size_t word_size);
 
   // Given a chunk, add its remaining free committed space to the free block list.
-  void salvage_chunk(Metachunk* c);
+  virtual void salvage_chunk(Metachunk* c, ClassLoaderData* cld);
 
   // Allocate a new chunk from the underlying chunk manager able to hold at least
   // requested word size.
-  Metachunk* allocate_new_chunk(size_t requested_word_size);
+  virtual Metachunk* allocate_new_chunk(size_t requested_word_size);
+
+  virtual MetaWord* allocate_in_current_chunk(size_t word_size, ClassLoaderData* cld);
 
   // Returns the level of the next chunk to be added, acc to growth policy.
   chunklevel_t next_chunk_level() const;
@@ -128,11 +130,11 @@ class MetaspaceArena : public CHeapObj<mtClass> {
   //  requested_word_size additional words.
   //
   // On success, true is returned, false otherwise.
-  bool attempt_enlarge_current_chunk(size_t requested_word_size);
+  virtual bool attempt_enlarge_current_chunk(size_t requested_word_size);
 
   // Prematurely returns a metaspace allocation to the _block_freelists
   // because it is not needed anymore (requires CLD lock to be active).
-  void deallocate_locked(MetaWord* p, size_t word_size);
+  virtual void deallocate_locked(MetaWord* p, size_t word_size);
 
   // Returns true if the area indicated by pointer and size have actually been allocated
   // from this arena.
@@ -144,7 +146,7 @@ public:
                  Mutex* lock, SizeAtomicCounter* total_used_words_counter,
                  const char* name);
 
-  ~MetaspaceArena();
+  virtual ~MetaspaceArena();
 
   // Allocate memory from Metaspace.
   // 1) Attempt to allocate from the dictionary of deallocated blocks.
@@ -152,7 +154,7 @@ public:
   // 3) Attempt to enlarge the current chunk in place if it is too small.
   // 4) Attempt to get a new chunk and allocate from that chunk.
   // At any point, if we hit a commit limit, we return NULL.
-  MetaWord* allocate(size_t word_size);
+  MetaWord* allocate(size_t word_size, ClassLoaderData* cld = NULL);
 
   // Prematurely returns a metaspace allocation to the _block_freelists because it is not
   // needed anymore.

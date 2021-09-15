@@ -82,6 +82,16 @@ public:
     return NULL;
   }
 
+  void remove_non_first_chunk(Metachunk* chunk) {
+    assert(chunk != NULL, "Must be");
+    assert(chunk != _first, "Must be");
+    chunk->prev()->set_next(chunk->next());
+    if (chunk->next() != NULL) {
+      chunk->next()->set_prev(chunk->prev());
+    }
+    _num_chunks.decrement();
+  }
+
   Metachunk* first()              { return _first; }
   const Metachunk* first() const  { return _first; }
 

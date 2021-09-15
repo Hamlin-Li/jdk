@@ -115,6 +115,7 @@ class ClassLoaderData : public CHeapObj<mtClass> {
   ClassLoaderMetaspace * volatile _metaspace;  // Meta-space where meta-data defined by the
                                     // classes in the class loader are allocated.
   Mutex* _metaspace_lock;  // Locks the metaspace for allocations and setup.
+  static Mutex* _shared_metaspace_lock;  // Locks the metaspace for shared allocations and setup.
   bool _unloading;         // true if this class loader goes away
   bool _has_class_mirror_holder; // If true, CLD is dedicated to one class and that class determines
                                  // the CLDs lifecycle.  For example, a non-strong hidden class.

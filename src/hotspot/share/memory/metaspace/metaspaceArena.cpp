@@ -58,7 +58,7 @@ chunklevel_t MetaspaceArena::next_chunk_level() const {
 }
 
 // Given a chunk, add its remaining free committed space to the free block list.
-void MetaspaceArena::salvage_chunk(Metachunk* c) {
+void MetaspaceArena::salvage_chunk(Metachunk* c, ClassLoaderData* cld) {
   if (Settings::handle_deallocations() == false) {
     return;
   }
@@ -103,6 +103,10 @@ Metachunk* MetaspaceArena::allocate_new_chunk(size_t requested_word_size) {
   assert(c->is_in_use(), "Wrong chunk state.");
   assert(c->free_below_committed_words() >= requested_word_size, "Chunk not committed");
   return c;
+}
+
+MetaWord* MetaspaceArena::allocate_in_current_chunk(size_t word_size, ClassLoaderData* cld) {
+  return current_chunk()->allocate(word_size);
 }
 
 void MetaspaceArena::add_allocation_to_fbl(MetaWord* p, size_t word_size) {
@@ -222,7 +226,7 @@ bool MetaspaceArena::attempt_enlarge_current_chunk(size_t requested_word_size) {
 // 3) Attempt to enlarge the current chunk in place if it is too small.
 // 4) Attempt to get a new chunk and allocate from that chunk.
 // At any point, if we hit a commit limit, we return NULL.
-MetaWord* MetaspaceArena::allocate(size_t requested_word_size) {
+MetaWord* MetaspaceArena::allocate(size_t requested_word_size, ClassLoaderData* cld) {
   MutexLocker cl(lock(), Mutex::_no_safepoint_check_flag);
   UL2(trace, "requested " SIZE_FORMAT " words.", requested_word_size);
 
@@ -275,7 +279,7 @@ MetaWord* MetaspaceArena::allocate(size_t requested_word_size) {
 
     // Allocate from the current chunk. This should work now.
     if (!current_chunk_too_small && !commit_failure) {
-      p = current_chunk()->allocate(raw_word_size);
+      p = allocate_in_current_chunk(raw_word_size, cld);
       assert(p != NULL, "Allocation from chunk failed.");
     }
   }
@@ -297,14 +301,14 @@ MetaWord* MetaspaceArena::allocate(size_t requested_word_size) {
 
       // We have a new chunk. Before making it the current chunk, retire the old one.
       if (current_chunk() != NULL) {
-        salvage_chunk(current_chunk());
+        salvage_chunk(current_chunk(), cld);
         DEBUG_ONLY(InternalStats::inc_num_chunks_retired();)
       }
 
       _chunks.add(new_chunk);
 
       // Now, allocate from that chunk. That should work.
-      p = current_chunk()->allocate(raw_word_size);
+      p = allocate_in_current_chunk(raw_word_size, cld);
       assert(p != NULL, "Allocation from chunk failed.");
     } else {
       UL2(info, "failed to allocate new chunk for requested word size " SIZE_FORMAT ".", requested_word_size);

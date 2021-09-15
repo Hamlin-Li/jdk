@@ -34,6 +34,7 @@ class outputStream;
 namespace metaspace {
   struct ClmsStats;
   class MetaspaceArena;
+  class SharedMetaspaceArena;
 }
 
 // A ClassLoaderMetaspace manages MetaspaceArena(s) for a CLD.
@@ -71,13 +72,21 @@ class ClassLoaderMetaspace : public CHeapObj<mtClass> {
   //  (NULL if -XX:-UseCompressedClassPointers).
   metaspace::MetaspaceArena* _class_space_arena;
 
+  ClassLoaderData* _cld;
+
+  bool _use_shared_arena;
+  static metaspace::SharedMetaspaceArena* _shared_non_class_space_arena;
+  static metaspace::SharedMetaspaceArena* _shared_class_space_arena;
+
   Mutex* lock() const                             { return _lock; }
   metaspace::MetaspaceArena* non_class_space_arena() const   { return _non_class_space_arena; }
   metaspace::MetaspaceArena* class_space_arena() const       { return _class_space_arena; }
 
+  static void init_shared_metaspace_arena(Mutex* lock, ClassLoaderData* cld);
+
 public:
 
-  ClassLoaderMetaspace(Mutex* lock, Metaspace::MetaspaceType space_type);
+  ClassLoaderMetaspace(Mutex* lock, Metaspace::MetaspaceType space_type, ClassLoaderData* cld = NULL);
 
   ~ClassLoaderMetaspace();
 

@@ -280,6 +280,7 @@ template class BasicHashtable<mtCompiler>;
 template class BasicHashtable<mtTracing>;
 template class BasicHashtable<mtServiceability>;
 template class BasicHashtable<mtLogging>;
+template class BasicHashtable<mtMetaspace>;
 
 template void BasicHashtable<mtClass>::verify_table<DictionaryEntry>(char const*);
 template void BasicHashtable<mtModule>::verify_table<ModuleEntry>(char const*);

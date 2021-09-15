@@ -35,11 +35,13 @@
 #include "memory/metaspace/metaspaceSettings.hpp"
 #include "memory/metaspace/metaspaceStatistics.hpp"
 #include "memory/metaspace/runningCounters.hpp"
+#include "memory/metaspace/sharedMetaspaceArena.hpp"
 #include "memory/metaspaceTracer.hpp"
 #include "utilities/debug.hpp"
 
 using metaspace::ChunkManager;
 using metaspace::MetaspaceArena;
+using metaspace::SharedMetaspaceArena;
 using metaspace::ArenaGrowthPolicy;
 using metaspace::RunningCounters;
 using metaspace::InternalStats;
@@ -47,53 +49,115 @@ using metaspace::InternalStats;
 #define LOGFMT         "CLMS @" PTR_FORMAT " "
 #define LOGFMT_ARGS    p2i(this)
 
-ClassLoaderMetaspace::ClassLoaderMetaspace(Mutex* lock, Metaspace::MetaspaceType space_type) :
+metaspace::SharedMetaspaceArena* ClassLoaderMetaspace::_shared_non_class_space_arena = NULL;
+metaspace::SharedMetaspaceArena* ClassLoaderMetaspace::_shared_class_space_arena = NULL;
+
+void ClassLoaderMetaspace::init_shared_metaspace_arena(Mutex* lock, ClassLoaderData* cld) {
+  assert(lock->is_locked(), "Must be");
+
+  if (_shared_non_class_space_arena == NULL) {
+    ChunkManager* const non_class_cm =
+      ChunkManager::chunkmanager_nonclass();
+    // Initialize non-class Arena
+    _shared_non_class_space_arena = new SharedMetaspaceArena(
+      non_class_cm,
+      ArenaGrowthPolicy::policy_for_space_type(Metaspace::ClassMirrorHolderMetaspaceType, false),
+      lock,
+      RunningCounters::used_nonclass_counter(),
+      "non-class sm");
+
+    // If needed, initialize class arena
+    if (Metaspace::using_class_space()) {
+      ChunkManager* const class_cm =
+        ChunkManager::chunkmanager_class();
+      _shared_class_space_arena = new SharedMetaspaceArena(
+        class_cm,
+        ArenaGrowthPolicy::policy_for_space_type(Metaspace::ClassMirrorHolderMetaspaceType, true),
+        lock,
+        RunningCounters::used_class_counter(),
+        "class sm");
+    }
+  }
+  _shared_non_class_space_arena->record_cld(cld);
+  if (_shared_class_space_arena != NULL) {
+    _shared_class_space_arena->record_cld(cld);
+  }
+}
+
+ClassLoaderMetaspace::ClassLoaderMetaspace(Mutex* lock,
+                                           Metaspace::MetaspaceType space_type,
+                                           ClassLoaderData* cld) :
   _lock(lock),
   _space_type(space_type),
   _non_class_space_arena(NULL),
-  _class_space_arena(NULL)
+  _class_space_arena(NULL),
+  _cld(cld),
+  _use_shared_arena(space_type == Metaspace::ClassMirrorHolderMetaspaceType)
 {
   ChunkManager* const non_class_cm =
           ChunkManager::chunkmanager_nonclass();
 
-  // Initialize non-class Arena
-  _non_class_space_arena = new MetaspaceArena(
+  if (!_use_shared_arena) {
+    // Initialize non-class Arena
+    _non_class_space_arena = new MetaspaceArena(
       non_class_cm,
       ArenaGrowthPolicy::policy_for_space_type(space_type, false),
       lock,
       RunningCounters::used_nonclass_counter(),
       "non-class sm");
 
-  // If needed, initialize class arena
-  if (Metaspace::using_class_space()) {
-    ChunkManager* const class_cm =
-            ChunkManager::chunkmanager_class();
-    _class_space_arena = new MetaspaceArena(
+    // If needed, initialize class arena
+    if (Metaspace::using_class_space()) {
+      ChunkManager *const class_cm =
+        ChunkManager::chunkmanager_class();
+      _class_space_arena = new MetaspaceArena(
         class_cm,
         ArenaGrowthPolicy::policy_for_space_type(space_type, true),
         lock,
         RunningCounters::used_class_counter(),
         "class sm");
+    }
+  } else {
+    ClassLoaderMetaspace::init_shared_metaspace_arena(lock, cld);
   }
-
   UL2(debug, "born (nonclass arena: " PTR_FORMAT ", class arena: " PTR_FORMAT ".",
       p2i(_non_class_space_arena), p2i(_class_space_arena));
 }
 
 ClassLoaderMetaspace::~ClassLoaderMetaspace() {
   UL(debug, "dies.");
-
-  delete _non_class_space_arena;
-  delete _class_space_arena;
-
+  if (_use_shared_arena) {
+    assert(_cld != NULL, "Must be");
+    assert(_shared_non_class_space_arena != NULL, "Must be");
+    _shared_non_class_space_arena->deallocate(_cld);
+    if (_shared_class_space_arena != NULL) {
+      _shared_class_space_arena->deallocate(_cld);
+    }
+  } else {
+    assert(_cld == NULL, "Must be");
+    delete _non_class_space_arena;
+    delete _class_space_arena;
+  }
 }
 
 // Allocate word_size words from Metaspace.
 MetaWord* ClassLoaderMetaspace::allocate(size_t word_size, Metaspace::MetadataType mdType) {
-  if (Metaspace::is_class_space_allocation(mdType)) {
-    return class_space_arena()->allocate(word_size);
+  if (_use_shared_arena) {
+    assert(_cld != NULL, "Must be");
+    if (Metaspace::is_class_space_allocation(mdType)) {
+      assert(_shared_class_space_arena != NULL, "Must be");
+      return _shared_class_space_arena->allocate(word_size, _cld);
+    } else {
+      assert(_shared_non_class_space_arena != NULL, "Must be");
+      return _shared_non_class_space_arena->allocate(word_size, _cld);
+    }
   } else {
-    return non_class_space_arena()->allocate(word_size);
+    assert(_cld == NULL, "Must be");
+    if (Metaspace::is_class_space_allocation(mdType)) {
+      return class_space_arena()->allocate(word_size);
+    } else {
+      return non_class_space_arena()->allocate(word_size);
+    }
   }
 }
 
@@ -131,11 +195,23 @@ MetaWord* ClassLoaderMetaspace::expand_and_allocate(size_t word_size, Metaspace:
 // Prematurely returns a metaspace allocation to the _block_freelists
 // because it is not needed anymore.
 void ClassLoaderMetaspace::deallocate(MetaWord* ptr, size_t word_size, bool is_class) {
-  if (Metaspace::using_class_space() && is_class) {
-    class_space_arena()->deallocate(ptr, word_size);
+  if (_use_shared_arena) {
+    assert(_cld != NULL, "Must be");
+    if (Metaspace::using_class_space() && is_class) {
+      assert(_shared_class_space_arena != NULL, "Must be");
+      _shared_class_space_arena->deallocate(ptr, _cld);
+    } else {
+      _shared_non_class_space_arena->deallocate(ptr, _cld);
+    }
   } else {
-    non_class_space_arena()->deallocate(ptr, word_size);
+    assert(_cld == NULL, "Must be");
+    if (Metaspace::using_class_space() && is_class) {
+      class_space_arena()->deallocate(ptr, word_size);
+    } else {
+      non_class_space_arena()->deallocate(ptr, word_size);
+    }
   }
+
   DEBUG_ONLY(InternalStats::inc_num_deallocs();)
 }
 
