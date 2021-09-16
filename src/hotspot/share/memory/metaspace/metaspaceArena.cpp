@@ -58,7 +58,7 @@ chunklevel_t MetaspaceArena::next_chunk_level() const {
 }
 
 // Given a chunk, add its remaining free committed space to the free block list.
-void MetaspaceArena::salvage_chunk(Metachunk* c, ClassLoaderData* cld) {
+void MetaspaceArena::salvage_chunk(Metachunk* c) {
   if (Settings::handle_deallocations() == false) {
     return;
   }
@@ -301,7 +301,7 @@ MetaWord* MetaspaceArena::allocate(size_t requested_word_size, ClassLoaderData* 
 
       // We have a new chunk. Before making it the current chunk, retire the old one.
       if (current_chunk() != NULL) {
-        salvage_chunk(current_chunk(), cld);
+        salvage_chunk(current_chunk());
         DEBUG_ONLY(InternalStats::inc_num_chunks_retired();)
       }
 

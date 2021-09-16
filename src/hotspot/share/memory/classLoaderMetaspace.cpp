@@ -84,6 +84,32 @@ void ClassLoaderMetaspace::init_shared_metaspace_arena(Mutex* lock, ClassLoaderD
   }
 }
 
+void ClassLoaderMetaspace::init_metaspace_arena(Mutex* lock,
+                                                Metaspace::MetaspaceType space_type,
+                                                ClassLoaderData* cld) {
+  ChunkManager* const non_class_cm =
+    ChunkManager::chunkmanager_nonclass();
+  // Initialize non-class Arena
+  _non_class_space_arena = new MetaspaceArena(
+    non_class_cm,
+    ArenaGrowthPolicy::policy_for_space_type(space_type, false),
+    lock,
+    RunningCounters::used_nonclass_counter(),
+    "non-class sm");
+
+  // If needed, initialize class arena
+  if (Metaspace::using_class_space()) {
+    ChunkManager* const class_cm =
+      ChunkManager::chunkmanager_class();
+    _class_space_arena = new MetaspaceArena(
+      class_cm,
+      ArenaGrowthPolicy::policy_for_space_type(space_type, true),
+      lock,
+      RunningCounters::used_class_counter(),
+      "class sm");
+  }
+}
+
 ClassLoaderMetaspace::ClassLoaderMetaspace(Mutex* lock,
                                            Metaspace::MetaspaceType space_type,
                                            ClassLoaderData* cld) :
@@ -94,29 +120,8 @@ ClassLoaderMetaspace::ClassLoaderMetaspace(Mutex* lock,
   _cld(cld),
   _use_shared_arena(space_type == Metaspace::ClassMirrorHolderMetaspaceType)
 {
-  ChunkManager* const non_class_cm =
-          ChunkManager::chunkmanager_nonclass();
-
   if (!_use_shared_arena) {
-    // Initialize non-class Arena
-    _non_class_space_arena = new MetaspaceArena(
-      non_class_cm,
-      ArenaGrowthPolicy::policy_for_space_type(space_type, false),
-      lock,
-      RunningCounters::used_nonclass_counter(),
-      "non-class sm");
-
-    // If needed, initialize class arena
-    if (Metaspace::using_class_space()) {
-      ChunkManager *const class_cm =
-        ChunkManager::chunkmanager_class();
-      _class_space_arena = new MetaspaceArena(
-        class_cm,
-        ArenaGrowthPolicy::policy_for_space_type(space_type, true),
-        lock,
-        RunningCounters::used_class_counter(),
-        "class sm");
-    }
+    init_metaspace_arena(lock, space_type, cld);
   } else {
     ClassLoaderMetaspace::init_shared_metaspace_arena(lock, cld);
   }

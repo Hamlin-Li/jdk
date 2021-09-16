@@ -115,7 +115,7 @@ protected:
   virtual void add_allocation_to_fbl(MetaWord* p, size_t word_size);
 
   // Given a chunk, add its remaining free committed space to the free block list.
-  virtual void salvage_chunk(Metachunk* c, ClassLoaderData* cld);
+  void salvage_chunk(Metachunk* c);
 
   // Allocate a new chunk from the underlying chunk manager able to hold at least
   // requested word size.
@@ -134,7 +134,7 @@ protected:
 
   // Prematurely returns a metaspace allocation to the _block_freelists
   // because it is not needed anymore (requires CLD lock to be active).
-  virtual void deallocate_locked(MetaWord* p, size_t word_size);
+  void deallocate_locked(MetaWord* p, size_t word_size);
 
   // Returns true if the area indicated by pointer and size have actually been allocated
   // from this arena.

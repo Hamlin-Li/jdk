@@ -121,7 +121,6 @@ public:
 
   // Bucket handling
   int hash_to_index(unsigned int full_hash) const {
-    assert(_table_size != 0, "Must be");
     int h = full_hash % _table_size;
     assert(h >= 0 && h < _table_size, "Illegal hash value");
     return h;
@@ -179,16 +178,8 @@ public:
 
   template <class T> void verify_table(const char* table_name) PRODUCT_RETURN;
 
-  template<typename VISITOR, typename CONTEXT>
-  void iterate(VISITOR visitor, CONTEXT context) {
-    for (int index = 0; index < _table_size; index++) {
-      BasicHashtableEntry<F>* cur = _buckets[index].get_entry();
-      while (cur != NULL) {
-        visitor->visit(cur, context);
-        cur = cur->next();
-      }
-    }
-  }
+  template<typename CLOSURE, typename CONTEXT>
+  void iterate(CLOSURE closure, CONTEXT context) const;
 };
 
 

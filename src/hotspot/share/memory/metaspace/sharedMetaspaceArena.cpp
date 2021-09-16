@@ -30,6 +30,7 @@
 #include "memory/metaspace/metaspaceCommon.hpp"
 #include "memory/metaspace/metaspaceSettings.hpp"
 #include "memory/metaspace/sharedMetaspaceArena.inline.hpp"
+#include "utilities/hashtable.inline.hpp"
 
 namespace metaspace {
 
@@ -110,13 +111,15 @@ SharedMetaspaceArena::SharedMetaspaceArena(ChunkManager* chunk_manager,
                                                           name),
                                            _addr_to_chunk(16),
                                            _chunk_to_count(16),
+#ifdef ASSERT
                                            _chunk_to_bitmap(16),
+#endif // ASSERT
                                            _cld_to_addr(16) {
 }
 
 SharedMetaspaceArena::~SharedMetaspaceArena() {
-  AllCLDsVisitor visitor(this);
-  _cld_to_addr.iterate(&visitor, (void*)NULL);
+  CLDsClosure closure(this);
+  _cld_to_addr.iterate(&closure, (void*)NULL);
 }
 
 void SharedMetaspaceArena::record_cld(ClassLoaderData* cld) {
@@ -200,13 +203,13 @@ void SharedMetaspaceArena::deallocate(ClassLoaderData* cld) {
   assert(entry != NULL, "Must be");
   Map<MetaWord*, bool>* set = entry->value();
   assert(set != NULL, "Must be");
-  SingleCLDVisitor visitor(this);
-  set->iterate(&visitor, cld);
-  delete set;
+  CLDAllocationsClosure closure(this);
+  set->iterate(&closure, cld);
+  FREE_C_HEAP_ARRAY(char, set);
 }
 
-void SharedMetaspaceArena::SingleCLDVisitor::visit(BasicHashtableEntry<mtMetaspace>* cur,
-                                                   ClassLoaderData* cld) {
+void SharedMetaspaceArena::CLDAllocationsClosure::visit(BasicHashtableEntry<mtMetaspace>* cur,
+                                                        ClassLoaderData* cld) {
   assert(_arena->lock()->is_locked(), "Must be");
   Entry<MetaWord*, bool>* entry = (Entry<MetaWord*, bool>*)cur;
   assert(entry != NULL, "Must be");
@@ -216,7 +219,7 @@ void SharedMetaspaceArena::SingleCLDVisitor::visit(BasicHashtableEntry<mtMetaspa
   _arena->deallocate_no_lock(entry->key(), cld, false);
 }
 
-void SharedMetaspaceArena::AllCLDsVisitor::visit(BasicHashtableEntry<mtMetaspace>* cur, void*) {
+void SharedMetaspaceArena::CLDsClosure::visit(BasicHashtableEntry<mtMetaspace>* cur, void*) {
   assert(_arena->lock()->is_locked(), "Must be");
   Entry<ClassLoaderData*, Map<MetaWord*, bool>*>* entry =
     (Entry<ClassLoaderData*, Map<MetaWord*, bool>*>*)cur;

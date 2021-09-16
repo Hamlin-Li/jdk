@@ -112,4 +112,16 @@ template <MEMFLAGS F> inline void BasicHashtable<F>::add_entry(int index, BasicH
   JFR_ONLY(_stats_rate.add();)
 }
 
+template <MEMFLAGS F>
+template<typename CLOSURE, typename CONTEXT>
+inline void BasicHashtable<F>::iterate(CLOSURE closure, CONTEXT context) const {
+  for (int index = 0; index < _table_size; index++) {
+    BasicHashtableEntry<F>* cur = _buckets[index].get_entry();
+    while (cur != NULL) {
+      closure->visit(cur, context);
+      cur = cur->next();
+    }
+  }
+}
+
 #endif // SHARE_UTILITIES_HASHTABLE_INLINE_HPP

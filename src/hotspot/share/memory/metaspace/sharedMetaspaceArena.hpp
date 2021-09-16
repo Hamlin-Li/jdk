@@ -132,16 +132,16 @@ class SharedMetaspaceArena : public MetaspaceArena {
 #endif //ASSERT
   Map<ClassLoaderData*, Map<MetaWord*, bool>*> _cld_to_addr;
 
-  class SingleCLDVisitor {
+  class CLDAllocationsClosure {
     SharedMetaspaceArena* _arena;
   public:
-    SingleCLDVisitor(SharedMetaspaceArena* arena) : _arena(arena) { }
+    CLDAllocationsClosure(SharedMetaspaceArena* arena) : _arena(arena) { }
     void visit(BasicHashtableEntry<mtMetaspace>* cur, ClassLoaderData* cld);
   };
-  class AllCLDsVisitor {
+  class CLDsClosure {
     SharedMetaspaceArena* _arena;
   public:
-    AllCLDsVisitor(SharedMetaspaceArena* arena) : _arena(arena) { }
+    CLDsClosure(SharedMetaspaceArena* arena) : _arena(arena) { }
     void visit(BasicHashtableEntry<mtMetaspace>* cur, void*);
   };
   static const uint LOG2_OF_HIGHEST_CHUNK_LEVEL;
@@ -166,8 +166,6 @@ public:
 
   void deallocate(MetaWord* p, ClassLoaderData* cld);
   void deallocate(ClassLoaderData* cld);
-
-  void visit(BasicHashtableEntry<mtMetaspace>* cur, ClassLoaderData* cld);
 };
 
 } // namespace metaspace
