@@ -122,6 +122,8 @@ void PrintCLDMetaspaceInfoClosure::do_cld(ClassLoaderData* cld) {
       if (s != NULL) {
         name = s->as_C_string();
       }
+    } else if (cld->is_shared_CLD_placeholder()) {
+      name = "<shared>";
     } else {
       name = "<bootstrap>";
     }

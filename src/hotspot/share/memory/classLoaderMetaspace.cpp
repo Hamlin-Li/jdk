@@ -49,12 +49,22 @@ using metaspace::InternalStats;
 #define LOGFMT         "CLMS @" PTR_FORMAT " "
 #define LOGFMT_ARGS    p2i(this)
 
-metaspace::SharedMetaspaceArena* ClassLoaderMetaspace::_shared_non_class_space_arena = NULL;
-metaspace::SharedMetaspaceArena* ClassLoaderMetaspace::_shared_class_space_arena = NULL;
+SharedCLMPlacerHolder* SharedCLMPlacerHolder::_single;
+metaspace::SharedMetaspaceArena* SharedCLMPlacerHolder::_shared_non_class_space_arena = NULL;
+metaspace::SharedMetaspaceArena* SharedCLMPlacerHolder::_shared_class_space_arena = NULL;
 
-void ClassLoaderMetaspace::init_shared_metaspace_arena(Mutex* lock, ClassLoaderData* cld) {
-  assert(lock->is_locked(), "Must be");
+SharedCLMPlacerHolder* SharedCLMPlacerHolder::init(Mutex* lock, ClassLoaderData* cld) {
+  if (_single != NULL) {
+    return _single;
+  }
+  init_shared_metaspace_arena(lock, cld);
+  _single = new SharedCLMPlacerHolder(lock,
+                                      Metaspace::MetaspaceTypeCount,
+                                      cld);
+  return _single;
+}
 
+void SharedCLMPlacerHolder::init_shared_metaspace_arena(Mutex* lock, ClassLoaderData* cld) {
   if (_shared_non_class_space_arena == NULL) {
     ChunkManager* const non_class_cm =
       ChunkManager::chunkmanager_nonclass();
@@ -77,10 +87,6 @@ void ClassLoaderMetaspace::init_shared_metaspace_arena(Mutex* lock, ClassLoaderD
         RunningCounters::used_class_counter(),
         "class sm");
     }
-  }
-  _shared_non_class_space_arena->record_cld(cld);
-  if (_shared_class_space_arena != NULL) {
-    _shared_class_space_arena->record_cld(cld);
   }
 }
 
@@ -118,12 +124,25 @@ ClassLoaderMetaspace::ClassLoaderMetaspace(Mutex* lock,
   _non_class_space_arena(NULL),
   _class_space_arena(NULL),
   _cld(cld),
-  _use_shared_arena(space_type == Metaspace::ClassMirrorHolderMetaspaceType)
+  _use_shared_arena(space_type == Metaspace::ClassMirrorHolderMetaspaceType
+                      ? UseSharedArena
+                      : (space_type == Metaspace::MetaspaceTypeCount
+                          ? SharedArenaItself : UseNormalArena))
 {
-  if (!_use_shared_arena) {
+  if (_use_shared_arena == UseNormalArena) {
     init_metaspace_arena(lock, space_type, cld);
+  } else if (_use_shared_arena == UseSharedArena) {
+    assert(SharedCLMPlacerHolder::shared_non_class_space_arena() != NULL, "Must be");
+    SharedCLMPlacerHolder::shared_non_class_space_arena()->record_cld(cld);
+    if (SharedCLMPlacerHolder::shared_class_space_arena() != NULL) {
+      SharedCLMPlacerHolder::shared_class_space_arena()->record_cld(cld);
+    }
   } else {
-    ClassLoaderMetaspace::init_shared_metaspace_arena(lock, cld);
+    assert(_use_shared_arena == SharedArenaItself, "Must be");
+    _non_class_space_arena = SharedCLMPlacerHolder::shared_non_class_space_arena();
+    if (SharedCLMPlacerHolder::shared_class_space_arena() != NULL) {
+      _class_space_arena = SharedCLMPlacerHolder::shared_class_space_arena();
+    }
   }
   UL2(debug, "born (nonclass arena: " PTR_FORMAT ", class arena: " PTR_FORMAT ".",
       p2i(_non_class_space_arena), p2i(_class_space_arena));
@@ -131,15 +150,19 @@ ClassLoaderMetaspace::ClassLoaderMetaspace(Mutex* lock,
 
 ClassLoaderMetaspace::~ClassLoaderMetaspace() {
   UL(debug, "dies.");
-  if (_use_shared_arena) {
+  if (_use_shared_arena == UseNormalArena) {
+    assert(_cld == NULL, "Must be");
+    delete _non_class_space_arena;
+    delete _class_space_arena;
+  } else if (_use_shared_arena == UseSharedArena) {
     assert(_cld != NULL, "Must be");
-    assert(_shared_non_class_space_arena != NULL, "Must be");
-    _shared_non_class_space_arena->deallocate(_cld);
-    if (_shared_class_space_arena != NULL) {
-      _shared_class_space_arena->deallocate(_cld);
+    assert(SharedCLMPlacerHolder::shared_non_class_space_arena() != NULL, "Must be");
+    SharedCLMPlacerHolder::shared_non_class_space_arena()->deallocate(_cld);
+    if (SharedCLMPlacerHolder::shared_class_space_arena() != NULL) {
+      SharedCLMPlacerHolder::shared_class_space_arena()->deallocate(_cld);
     }
   } else {
-    assert(_cld == NULL, "Must be");
+    assert(_use_shared_arena == SharedArenaItself, "Must be");
     delete _non_class_space_arena;
     delete _class_space_arena;
   }
@@ -147,28 +170,34 @@ ClassLoaderMetaspace::~ClassLoaderMetaspace() {
 
 // Allocate word_size words from Metaspace.
 MetaWord* ClassLoaderMetaspace::allocate(size_t word_size, Metaspace::MetadataType mdType) {
-  if (_use_shared_arena) {
-    assert(_cld != NULL, "Must be");
-    if (Metaspace::is_class_space_allocation(mdType)) {
-      assert(_shared_class_space_arena != NULL, "Must be");
-      return _shared_class_space_arena->allocate(word_size, _cld);
-    } else {
-      assert(_shared_non_class_space_arena != NULL, "Must be");
-      return _shared_non_class_space_arena->allocate(word_size, _cld);
-    }
-  } else {
+  if (_use_shared_arena == UseNormalArena) {
     assert(_cld == NULL, "Must be");
     if (Metaspace::is_class_space_allocation(mdType)) {
       return class_space_arena()->allocate(word_size);
     } else {
       return non_class_space_arena()->allocate(word_size);
     }
+  } else if (_use_shared_arena == UseSharedArena) {
+    assert(_cld != NULL, "Must be");
+    if (Metaspace::is_class_space_allocation(mdType)) {
+      assert(SharedCLMPlacerHolder::shared_class_space_arena() != NULL, "Must be");
+      return SharedCLMPlacerHolder::shared_class_space_arena()->allocate(word_size, _cld);
+    } else {
+      assert(SharedCLMPlacerHolder::shared_non_class_space_arena() != NULL, "Must be");
+      return SharedCLMPlacerHolder::shared_non_class_space_arena()->allocate(word_size, _cld);
+    }
+  } else {
+    ShouldNotReachHere();
+    return NULL;
   }
 }
 
 // Attempt to expand the GC threshold to be good for at least another word_size words
 // and allocate. Returns NULL if failure. Used during Metaspace GC.
 MetaWord* ClassLoaderMetaspace::expand_and_allocate(size_t word_size, Metaspace::MetadataType mdType) {
+  if (_use_shared_arena == SharedArenaItself) {
+    ShouldNotReachHere();
+  }
   size_t delta_bytes = MetaspaceGC::delta_capacity_until_GC(word_size * BytesPerWord);
   assert(delta_bytes > 0, "Must be");
 
@@ -200,21 +229,24 @@ MetaWord* ClassLoaderMetaspace::expand_and_allocate(size_t word_size, Metaspace:
 // Prematurely returns a metaspace allocation to the _block_freelists
 // because it is not needed anymore.
 void ClassLoaderMetaspace::deallocate(MetaWord* ptr, size_t word_size, bool is_class) {
-  if (_use_shared_arena) {
-    assert(_cld != NULL, "Must be");
-    if (Metaspace::using_class_space() && is_class) {
-      assert(_shared_class_space_arena != NULL, "Must be");
-      _shared_class_space_arena->deallocate(ptr, _cld);
-    } else {
-      _shared_non_class_space_arena->deallocate(ptr, _cld);
-    }
-  } else {
+  if (_use_shared_arena == UseNormalArena) {
     assert(_cld == NULL, "Must be");
     if (Metaspace::using_class_space() && is_class) {
       class_space_arena()->deallocate(ptr, word_size);
     } else {
       non_class_space_arena()->deallocate(ptr, word_size);
     }
+  } else if (_use_shared_arena == UseSharedArena) {
+    assert(_cld != NULL, "Must be");
+    if (Metaspace::using_class_space() && is_class) {
+      assert(SharedCLMPlacerHolder::shared_class_space_arena() != NULL, "Must be");
+      SharedCLMPlacerHolder::shared_class_space_arena()->deallocate(ptr, _cld);
+    } else {
+      assert(SharedCLMPlacerHolder::shared_non_class_space_arena() != NULL, "Must be");
+      SharedCLMPlacerHolder::shared_non_class_space_arena()->deallocate(ptr, _cld);
+    }
+  } else {
+    ShouldNotReachHere();
   }
 
   DEBUG_ONLY(InternalStats::inc_num_deallocs();)
@@ -222,21 +254,29 @@ void ClassLoaderMetaspace::deallocate(MetaWord* ptr, size_t word_size, bool is_c
 
 // Update statistics. This walks all in-use chunks.
 void ClassLoaderMetaspace::add_to_statistics(metaspace::ClmsStats* out) const {
-  if (non_class_space_arena() != NULL) {
-    non_class_space_arena()->add_to_statistics(&out->_arena_stats_nonclass);
-  }
-  if (class_space_arena() != NULL) {
-    class_space_arena()->add_to_statistics(&out->_arena_stats_class);
+  if ((_use_shared_arena == UseNormalArena) || (_use_shared_arena == SharedArenaItself)) {
+    if (non_class_space_arena() != NULL) {
+      non_class_space_arena()->add_to_statistics(&out->_arena_stats_nonclass);
+    }
+    if (class_space_arena() != NULL) {
+      class_space_arena()->add_to_statistics(&out->_arena_stats_class);
+    }
+  } else {
+    assert(_use_shared_arena == UseSharedArena, "Must be");
   }
 }
 
 #ifdef ASSERT
 void ClassLoaderMetaspace::verify() const {
-  if (non_class_space_arena() != NULL) {
-    non_class_space_arena()->verify();
-  }
-  if (class_space_arena() != NULL) {
-    class_space_arena()->verify();
+  if ((_use_shared_arena == UseNormalArena) || (_use_shared_arena == SharedArenaItself)) {
+    if (non_class_space_arena() != NULL) {
+      non_class_space_arena()->verify();
+    }
+    if (class_space_arena() != NULL) {
+      class_space_arena()->verify();
+    }
+  } else {
+    assert(_use_shared_arena == UseSharedArena, "Must be");
   }
 }
 #endif // ASSERT
@@ -246,19 +286,29 @@ void ClassLoaderMetaspace::verify() const {
 //  contain committed and uncommitted areas. For now we do this to maintain
 //  backward compatibility with JFR.
 void ClassLoaderMetaspace::calculate_jfr_stats(size_t* p_used_bytes, size_t* p_capacity_bytes) const {
-  // Implement this using the standard statistics objects.
-  size_t used_c = 0, cap_c = 0, used_nc = 0, cap_nc = 0;
-  if (non_class_space_arena() != NULL) {
-    non_class_space_arena()->usage_numbers(&used_nc, NULL, &cap_nc);
-  }
-  if (class_space_arena() != NULL) {
-    class_space_arena()->usage_numbers(&used_c, NULL, &cap_c);
-  }
-  if (p_used_bytes != NULL) {
-    *p_used_bytes = used_c + used_nc;
-  }
-  if (p_capacity_bytes != NULL) {
-    *p_capacity_bytes = cap_c + cap_nc;
+  if ((_use_shared_arena == UseNormalArena) || (_use_shared_arena == SharedArenaItself)) {
+    // Implement this using the standard statistics objects.
+    size_t used_c = 0, cap_c = 0, used_nc = 0, cap_nc = 0;
+    if (non_class_space_arena() != NULL) {
+      non_class_space_arena()->usage_numbers(&used_nc, NULL, &cap_nc);
+    }
+    if (class_space_arena() != NULL) {
+      class_space_arena()->usage_numbers(&used_c, NULL, &cap_c);
+    }
+    if (p_used_bytes != NULL) {
+      *p_used_bytes = used_c + used_nc;
+    }
+    if (p_capacity_bytes != NULL) {
+      *p_capacity_bytes = cap_c + cap_nc;
+    }
+  } else {
+    assert(_use_shared_arena == UseSharedArena, "Must be");
+    if (p_used_bytes != NULL) {
+      *p_used_bytes = 0;
+    }
+    if (p_capacity_bytes != NULL) {
+      *p_capacity_bytes = 0;
+    }
   }
 }
 

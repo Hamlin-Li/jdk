@@ -59,6 +59,12 @@ namespace metaspace {
 //
 class ClassLoaderMetaspace : public CHeapObj<mtClass> {
 
+  enum SharedArenaType {
+    UseNormalArena,
+    UseSharedArena,
+    SharedArenaItself,
+    ArenaTypeCount
+  };
   // A reference to an outside lock, held by the CLD.
   Mutex* const _lock;
 
@@ -74,16 +80,13 @@ class ClassLoaderMetaspace : public CHeapObj<mtClass> {
 
   ClassLoaderData* _cld;
 
-  bool _use_shared_arena;
-  static metaspace::SharedMetaspaceArena* _shared_non_class_space_arena;
-  static metaspace::SharedMetaspaceArena* _shared_class_space_arena;
+  SharedArenaType _use_shared_arena;
 
   Mutex* lock() const                             { return _lock; }
   metaspace::MetaspaceArena* non_class_space_arena() const   { return _non_class_space_arena; }
   metaspace::MetaspaceArena* class_space_arena() const       { return _class_space_arena; }
 
   void init_metaspace_arena(Mutex* lock, Metaspace::MetaspaceType space_type, ClassLoaderData* cld);
-  static void init_shared_metaspace_arena(Mutex* lock, ClassLoaderData* cld);
 
 public:
 
@@ -117,5 +120,23 @@ public:
 
 }; // end: ClassLoaderMetaspace
 
+class SharedCLMPlacerHolder : public ClassLoaderMetaspace {
+  static SharedCLMPlacerHolder* _single;
+  static metaspace::SharedMetaspaceArena* _shared_non_class_space_arena;
+  static metaspace::SharedMetaspaceArena* _shared_class_space_arena;
+
+  SharedCLMPlacerHolder(Mutex* lock, Metaspace::MetaspaceType space_type, ClassLoaderData* cld) :
+    ClassLoaderMetaspace(lock, space_type, cld) {
+  }
+  static void init_shared_metaspace_arena(Mutex* lock, ClassLoaderData* cld);
+public:
+  static SharedCLMPlacerHolder* init(Mutex* lock, ClassLoaderData* cld);
+  static metaspace::SharedMetaspaceArena* shared_non_class_space_arena() {
+    return _shared_non_class_space_arena;
+  }
+  static metaspace::SharedMetaspaceArena* shared_class_space_arena() {
+    return _shared_class_space_arena;
+  }
+};
 
 #endif // SHARE_MEMORY_CLASSLOADERMETASPACE_HPP

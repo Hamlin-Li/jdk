@@ -350,6 +350,7 @@ void ClassLoaderDataGraph::loaded_cld_do(CLDClosure* cl) {
   while (ClassLoaderData* cld = iter.get_next()) {
     cl->do_cld(cld);
   }
+  cl->do_cld(SharedCLDPlaceHolder::instance());
 }
 
 // These functions assume that the caller has locked the ClassLoaderDataGraph_lock

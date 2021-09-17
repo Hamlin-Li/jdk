@@ -79,7 +79,21 @@
 #include "utilities/ostream.hpp"
 
 ClassLoaderData * ClassLoaderData::_the_null_class_loader_data = NULL;
-Mutex* ClassLoaderData::_shared_metaspace_lock = NULL;
+
+SharedCLDPlaceHolder* SharedCLDPlaceHolder::_single = NULL;
+Mutex* SharedCLDPlaceHolder::_shared_metaspace_lock = NULL;
+SharedCLDPlaceHolder* SharedCLDPlaceHolder::_shared_CLM_placeholder = NULL;
+
+void SharedCLDPlaceHolder::init() {
+  if (_single != NULL) {
+    return;
+  }
+  _shared_metaspace_lock = new Mutex(Mutex::leaf+1,
+                                    "Metaspace allocation lock (shared)",
+                                    Mutex::_safepoint_check_never);
+  _single = new SharedCLDPlaceHolder();
+  _single->_metaspace = SharedCLMPlacerHolder::init(_shared_metaspace_lock, _single);
+}
 
 void ClassLoaderData::init_null_class_loader_data() {
   assert(_the_null_class_loader_data == NULL, "cannot initialize twice");
@@ -98,9 +112,7 @@ void ClassLoaderData::init_null_class_loader_data() {
     ls.cr();
   }
 
-  _shared_metaspace_lock = new Mutex(Mutex::leaf+1,
-                                     "Metaspace allocation lock (shared)",
-                                     Mutex::_safepoint_check_never);
+  SharedCLDPlaceHolder::init();
 }
 
 // Obtain and set the class loader's name within the ClassLoaderData so
@@ -136,10 +148,10 @@ void ClassLoaderData::initialize_name(Handle class_loader) {
   _name_and_id = SymbolTable::new_symbol(cl_instance_name_and_id);
 }
 
-ClassLoaderData::ClassLoaderData(Handle h_class_loader, bool has_class_mirror_holder) :
+ClassLoaderData::ClassLoaderData(Handle h_class_loader, bool has_class_mirror_holder, bool shared_cld_placeholder) :
   _metaspace(NULL),
   _metaspace_lock(has_class_mirror_holder ?
-                    _shared_metaspace_lock :
+                    SharedCLDPlaceHolder::shared_metaspace_lock() :
                     new Mutex(Mutex::leaf+1, "Metaspace allocation lock",
                               Mutex::_safepoint_check_never)),
   _unloading(false), _has_class_mirror_holder(has_class_mirror_holder),
@@ -154,8 +166,14 @@ ClassLoaderData::ClassLoaderData(Handle h_class_loader, bool has_class_mirror_ho
   _jmethod_ids(NULL),
   _deallocate_list(NULL),
   _next(NULL),
-  _class_loader_klass(NULL), _name(NULL), _name_and_id(NULL) {
-  assert(_shared_metaspace_lock != NULL || h_class_loader.is_null(), "Must be");
+  _class_loader_klass(NULL), _name(NULL), _name_and_id(NULL),
+  _is_shared_CLD_placeholder(shared_cld_placeholder) {
+
+  if (_is_shared_CLD_placeholder) {
+    // SharedCLDPlaceHolder is just a placeholder, it does not need and should not have
+    // following initialization, so we intentionally skip following initialization.
+    return;
+  }
 
   if (!h_class_loader.is_null()) {
     _class_loader = _handles.add(h_class_loader());

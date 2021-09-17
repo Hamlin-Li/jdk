@@ -105,6 +105,7 @@ class ClassLoaderData : public CHeapObj<mtClass> {
   friend class Klass;
   friend class MetaDataFactory;
   friend class Method;
+  friend class SharedCLDPlaceHolder;
 
   static ClassLoaderData * _the_null_class_loader_data;
 
@@ -115,7 +116,6 @@ class ClassLoaderData : public CHeapObj<mtClass> {
   ClassLoaderMetaspace * volatile _metaspace;  // Meta-space where meta-data defined by the
                                     // classes in the class loader are allocated.
   Mutex* _metaspace_lock;  // Locks the metaspace for allocations and setup.
-  static Mutex* _shared_metaspace_lock;  // Locks the metaspace for shared allocations and setup.
   bool _unloading;         // true if this class loader goes away
   bool _has_class_mirror_holder; // If true, CLD is dedicated to one class and that class determines
                                  // the CLDs lifecycle.  For example, a non-strong hidden class.
@@ -160,10 +160,12 @@ class ClassLoaderData : public CHeapObj<mtClass> {
   Symbol* _name_and_id;
   JFR_ONLY(DEFINE_TRACE_ID_FIELD;)
 
+  bool _is_shared_CLD_placeholder;
+
   void set_next(ClassLoaderData* next) { _next = next; }
   ClassLoaderData* next() const        { return Atomic::load(&_next); }
 
-  ClassLoaderData(Handle h_class_loader, bool has_class_mirror_holder);
+  ClassLoaderData(Handle h_class_loader, bool has_class_mirror_holder, bool shared_cld_placeholder = false);
   ~ClassLoaderData();
 
   // The CLD are not placed in the Heap, so the Card Table or
@@ -327,7 +329,31 @@ class ClassLoaderData : public CHeapObj<mtClass> {
     return (unsigned)((uintptr_t)this >> LogBytesPerWord);
   }
 
+  bool is_shared_CLD_placeholder() { return _is_shared_CLD_placeholder; }
+
   JFR_ONLY(DEFINE_TRACE_ID_METHODS;)
+};
+
+class SharedCLDPlaceHolder : public ClassLoaderData {
+  static SharedCLDPlaceHolder* _single;
+  static Mutex* _shared_metaspace_lock;
+  static SharedCLDPlaceHolder* _shared_CLM_placeholder;
+
+  SharedCLDPlaceHolder() : ClassLoaderData(Handle(), true, true) { }
+public:
+  ~SharedCLDPlaceHolder() {
+    delete _metaspace_lock;
+  }
+  static void init();
+  static SharedCLDPlaceHolder* instance() {
+    return _single;
+  }
+  static Mutex* shared_metaspace_lock() {
+    return _shared_metaspace_lock;
+  }
+  static ClassLoaderMetaspace* shared_CLM_placeholder() {
+    return _single->_metaspace;
+  }
 };
 
 #endif // SHARE_CLASSFILE_CLASSLOADERDATA_HPP
