@@ -53,18 +53,16 @@ SharedCLMPlacerHolder* SharedCLMPlacerHolder::_single;
 metaspace::SharedMetaspaceArena* SharedCLMPlacerHolder::_shared_non_class_space_arena = NULL;
 metaspace::SharedMetaspaceArena* SharedCLMPlacerHolder::_shared_class_space_arena = NULL;
 
-SharedCLMPlacerHolder* SharedCLMPlacerHolder::init(Mutex* lock, ClassLoaderData* cld) {
+SharedCLMPlacerHolder* SharedCLMPlacerHolder::init(Mutex* lock) {
   if (_single != NULL) {
     return _single;
   }
-  init_shared_metaspace_arena(lock, cld);
-  _single = new SharedCLMPlacerHolder(lock,
-                                      Metaspace::MetaspaceTypeCount,
-                                      cld);
+  init_shared_metaspace_arena(lock);
+  _single = new SharedCLMPlacerHolder(lock);
   return _single;
 }
 
-void SharedCLMPlacerHolder::init_shared_metaspace_arena(Mutex* lock, ClassLoaderData* cld) {
+void SharedCLMPlacerHolder::init_shared_metaspace_arena(Mutex* lock) {
   if (_shared_non_class_space_arena == NULL) {
     ChunkManager* const non_class_cm =
       ChunkManager::chunkmanager_nonclass();
@@ -123,26 +121,25 @@ ClassLoaderMetaspace::ClassLoaderMetaspace(Mutex* lock,
   _space_type(space_type),
   _non_class_space_arena(NULL),
   _class_space_arena(NULL),
-  _cld(cld),
-  _use_shared_arena(space_type == Metaspace::ClassMirrorHolderMetaspaceType
-                      ? UseSharedArena
-                      : (space_type == Metaspace::MetaspaceTypeCount
-                          ? SharedArenaItself : UseNormalArena))
+  _cld(cld)
 {
-  if (_use_shared_arena == UseNormalArena) {
-    init_metaspace_arena(lock, space_type, cld);
-  } else if (_use_shared_arena == UseSharedArena) {
+  if (space_type == Metaspace::ClassMirrorHolderMetaspaceType && cld == NULL) {
+    _use_shared_arena = SharedArenaItself;
+    _non_class_space_arena = SharedCLMPlacerHolder::shared_non_class_space_arena();
+    if (SharedCLMPlacerHolder::shared_class_space_arena() != NULL) {
+      _class_space_arena = SharedCLMPlacerHolder::shared_class_space_arena();
+    }
+  } else if (space_type == Metaspace::ClassMirrorHolderMetaspaceType) {
     assert(SharedCLMPlacerHolder::shared_non_class_space_arena() != NULL, "Must be");
+    _use_shared_arena = UseSharedArena;
     SharedCLMPlacerHolder::shared_non_class_space_arena()->record_cld(cld);
     if (SharedCLMPlacerHolder::shared_class_space_arena() != NULL) {
       SharedCLMPlacerHolder::shared_class_space_arena()->record_cld(cld);
     }
   } else {
-    assert(_use_shared_arena == SharedArenaItself, "Must be");
-    _non_class_space_arena = SharedCLMPlacerHolder::shared_non_class_space_arena();
-    if (SharedCLMPlacerHolder::shared_class_space_arena() != NULL) {
-      _class_space_arena = SharedCLMPlacerHolder::shared_class_space_arena();
-    }
+    assert(cld == NULL, "Must be");
+    _use_shared_arena = UseNormalArena;
+    init_metaspace_arena(lock, space_type, cld);
   }
   UL2(debug, "born (nonclass arena: " PTR_FORMAT ", class arena: " PTR_FORMAT ".",
       p2i(_non_class_space_arena), p2i(_class_space_arena));

@@ -334,11 +334,20 @@ class ClassLoaderData : public CHeapObj<mtClass> {
   JFR_ONLY(DEFINE_TRACE_ID_METHODS;)
 };
 
+// This is just a placeoholder ClassLoaderData to hold the underlying
+// shared chunks used by weak hidden classes, it's only responsible for
+// accessing underlying chunks, e.g. in CLDG::loaded_cld_do, it's not directly
+// responsible for allocation/deallocation.
+// And it's not added to ClassLoaderDataGraph, it's only accessed explicitly
+// in CLDG::loaded_cld_do.
 class SharedCLDPlaceHolder : public ClassLoaderData {
   static SharedCLDPlaceHolder* _single;
   static Mutex* _shared_metaspace_lock;
   static SharedCLDPlaceHolder* _shared_CLM_placeholder;
 
+  // Pass in "null" class cloader, as this is just a placeholder.
+  // To distinguish from the real _the_null_class_loader_data, introduce
+  // ClassLoaderData::_is_shared_CLD_placeholder.
   SharedCLDPlaceHolder() : ClassLoaderData(Handle(), true, true) { }
 public:
   ~SharedCLDPlaceHolder() {

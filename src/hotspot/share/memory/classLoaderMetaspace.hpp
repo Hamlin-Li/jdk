@@ -59,12 +59,28 @@ namespace metaspace {
 //
 class ClassLoaderMetaspace : public CHeapObj<mtClass> {
 
+  // Currently, there are 3 types of ClassLoaderMetaspace:
+  //   Normal ones (ClassLoaderMetaspace), each has its own MetaspaceArena;
+  //   Shared ones (ClassLoaderMetaspace), all shares a single underlying
+  //     SharedMetaspaceArena, it's responsible to allocation/deallocation.
+  //     Currently, only weak hidden classes is in this type;
+  //   Place holder (SharedCLMPlacerHolder), it's only responsible for holding
+  //     the underlying shared chunks used by weak hidden classes, and accessing
+  //     underlying chunks, e.g. in CLDG::loaded_cld_do, but it's not directly
+  //     responsible for allocation/deallocation.
+  // To distinguish among these three types of CLM,
+  //   Use (_space_type == Metaspace::ClassMirrorHolderMetaspaceType && _cld == NULL)
+  //     to indicate SharedArenaItself(SharedArenaType);
+  //   Use (_space_type == Metaspace::ClassMirrorHolderMetaspaceType && _cld == NULL)
+  //     to indicate UseSharedArena(SharedArenaType);
+  //   Others are UseNormalArena(SharedArenaType).
   enum SharedArenaType {
     UseNormalArena,
     UseSharedArena,
     SharedArenaItself,
     ArenaTypeCount
   };
+
   // A reference to an outside lock, held by the CLD.
   Mutex* const _lock;
 
@@ -120,17 +136,23 @@ public:
 
 }; // end: ClassLoaderMetaspace
 
+// This is just a placeoholder ClassLoaderMetaspace to hold the underlying
+// shared chunks used by weak hidden classes, it's only responsible for
+// accessing underlying chunks, e.g. in CLDG::loaded_cld_do, it's not directly
+// responsible for allocation/deallocation.
 class SharedCLMPlacerHolder : public ClassLoaderMetaspace {
   static SharedCLMPlacerHolder* _single;
   static metaspace::SharedMetaspaceArena* _shared_non_class_space_arena;
   static metaspace::SharedMetaspaceArena* _shared_class_space_arena;
 
-  SharedCLMPlacerHolder(Mutex* lock, Metaspace::MetaspaceType space_type, ClassLoaderData* cld) :
-    ClassLoaderMetaspace(lock, space_type, cld) {
+  // This ClassLoaderMetaspace is of SharedArenaItself (SharedArenaType)
+  // We explicitly pass NULL to _cld to ClassLoaderMetaspace to make it clear.
+  SharedCLMPlacerHolder(Mutex* lock) :
+    ClassLoaderMetaspace(lock, Metaspace::ClassMirrorHolderMetaspaceType, NULL) {
   }
-  static void init_shared_metaspace_arena(Mutex* lock, ClassLoaderData* cld);
+  static void init_shared_metaspace_arena(Mutex* lock);
 public:
-  static SharedCLMPlacerHolder* init(Mutex* lock, ClassLoaderData* cld);
+  static SharedCLMPlacerHolder* init(Mutex* lock);
   static metaspace::SharedMetaspaceArena* shared_non_class_space_arena() {
     return _shared_non_class_space_arena;
   }

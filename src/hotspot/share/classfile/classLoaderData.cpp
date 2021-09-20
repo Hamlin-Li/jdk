@@ -92,7 +92,7 @@ void SharedCLDPlaceHolder::init() {
                                     "Metaspace allocation lock (shared)",
                                     Mutex::_safepoint_check_never);
   _single = new SharedCLDPlaceHolder();
-  _single->_metaspace = SharedCLMPlacerHolder::init(_shared_metaspace_lock, _single);
+  _single->_metaspace = SharedCLMPlacerHolder::init(_shared_metaspace_lock);
 }
 
 void ClassLoaderData::init_null_class_loader_data() {

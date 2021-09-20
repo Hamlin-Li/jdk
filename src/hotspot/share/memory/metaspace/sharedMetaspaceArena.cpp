@@ -30,6 +30,7 @@
 #include "memory/metaspace/metaspaceCommon.hpp"
 #include "memory/metaspace/metaspaceSettings.hpp"
 #include "memory/metaspace/sharedMetaspaceArena.inline.hpp"
+#include "runtime/mutexLocker.hpp"
 #include "utilities/hashtable.inline.hpp"
 
 namespace metaspace {
