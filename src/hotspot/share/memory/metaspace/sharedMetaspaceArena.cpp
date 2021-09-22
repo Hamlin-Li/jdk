@@ -95,8 +95,10 @@ void SharedMetaspaceArena::return_non_first_chunk(Metachunk* chunk) {
 
   DEBUG_ONLY(chunk->set_prev(NULL);)
   DEBUG_ONLY(chunk->set_next(NULL);)
+  size_t used = chunk->used_words();
+  assert(used <= chunk->word_size(), "Must be, " SIZE_FORMAT ", " SIZE_FORMAT, used, chunk->word_size());
+  _total_used_words_counter->decrement_by(used);
   chunk_manager()->return_chunk(chunk);
-  _total_used_words_counter->decrement_by(chunk->used_words());
   DEBUG_ONLY(chunk_manager()->verify();)
 }
 
