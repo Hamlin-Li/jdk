@@ -301,10 +301,14 @@ void ClassLoaderMetaspace::calculate_jfr_stats(size_t* p_used_bytes, size_t* p_c
   } else {
     assert(_use_shared_arena == UseSharedArena, "Must be");
     if (p_used_bytes != NULL) {
-      *p_used_bytes = 0;
+      // This is just a fake data to make it look like valid data,
+      // the real data is in shared arena.
+      *p_used_bytes = 1;
     }
     if (p_capacity_bytes != NULL) {
-      *p_capacity_bytes = 0;
+      // This is just a fake data to make it look like valid data,
+      // the real data is in shared arena.
+      *p_capacity_bytes = 1;
     }
   }
 }
