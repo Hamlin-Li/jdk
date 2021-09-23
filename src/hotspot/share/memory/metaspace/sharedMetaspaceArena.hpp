@@ -94,18 +94,28 @@ class SharedMetaspaceArena : public MetaspaceArena {
       return (Entry<Key, Value>*) BasicHashtable<mtMetaspace>::bucket(i);
     }
 
-    // TODO: refine it?
+    static uint32_t address_to_uint32(uintptr_t key) {
+      uint32_t hash = (uint32_t)(key >> 3);
+      hash = ~hash + (hash << 15);
+      hash = hash ^ (hash >> 12);
+      hash = hash + (hash << 2);
+      hash = hash ^ (hash >> 4);
+      hash = hash * 2057;
+      hash = hash ^ (hash >> 16);
+      return hash;
+    }
+
     static unsigned int compute_hash(intptr_t key) {
-      return (uint) key;
+      return address_to_uint32(key);
     }
     static unsigned int compute_hash(Metachunk* key) {
-      return (uint) p2i(key);
+      return address_to_uint32(p2i(key));
     }
     static unsigned int compute_hash(ClassLoaderData* key) {
-      return (uint) p2i(key);
+      return address_to_uint32(p2i(key));
     }
     static unsigned int compute_hash(MetaWord* key) {
-      return (uint) p2i(key);
+      return address_to_uint32(p2i(key));
     }
 
   public:
