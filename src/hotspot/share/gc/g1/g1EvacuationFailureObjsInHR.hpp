@@ -25,6 +25,7 @@
 #ifndef SHARE_GC_G1_G1EVACUATIONFAILUREOBJSINHR_HPP
 #define SHARE_GC_G1_G1EVACUATIONFAILUREOBJSINHR_HPP
 
+#include "gc/g1/g1SegmentedArray.hpp"
 #include "memory/iterator.hpp"
 #include "oops/oop.hpp"
 
@@ -162,7 +163,7 @@ class G1EvacuationFailureObjsInHR {
     }
 
     template<typename VISITOR>
-    void iterate_elements(VISITOR v) {
+    void iterate_elements(VISITOR& v) {
       int64_t pos = Atomic::load(&_cur_pos);
       DEBUG_ONLY(uint total = 0);
       uint32_t hi = node_index(pos);
@@ -171,7 +172,7 @@ class G1EvacuationFailureObjsInHR {
         uint32_t limit = (i == hi) ? lo : NODE_XXX::LENGTH;
         NODE_XXX* node = Atomic::load(&_nodes[i]);
         for (uint32_t j = 0; j < limit; j++) {
-          v->visit(node->operator[](j));
+          v.visit(node->operator[](j));
           DEBUG_ONLY(total++);
         }
       }
@@ -179,7 +180,7 @@ class G1EvacuationFailureObjsInHR {
     }
 
     template<typename VISITOR>
-    void iterate_nodes(VISITOR v) {
+    void iterate_nodes(VISITOR& v) {
       int64_t pos = Atomic::load(&_cur_pos);
       uint32_t hi = node_index(pos);
       uint32_t lo = elem_index(pos);
@@ -189,7 +190,7 @@ class G1EvacuationFailureObjsInHR {
         if (limit == 0) {
           break;
         }
-        v->visit(node, limit);
+        v.visit(node, limit);
       }
     }
 
@@ -219,10 +220,17 @@ public:
 
 private:
   static const uint32_t NODE_LENGTH = 256;
+  static const G1SegmentedArrayAllocOptions _alloc_options;
+  // This free list is shared among evacuation failure process in all regions.
+  static G1SegmentedArrayBufferList<mtGC> _free_buffer_list;
+
   const Elem _max_offset;
   const uint _region_idx;
   const HeapWord* _bottom;
-  Array<NODE_LENGTH, Elem> _nodes_array;
+  //Array<NODE_LENGTH, Elem> _nodes_array_old;
+  //Elem* _offset_array_old;
+  //uint _objs_num_old;
+  G1SegmentedArray<Elem, mtGC> _nodes_array;
   Elem* _offset_array;
   uint _objs_num;
 
@@ -235,8 +243,6 @@ private:
     size_t offset = pointer_delta(o, _bottom);
     return static_cast<Elem>(offset);
   }
-  void visit(Elem);
-  void visit(Array<NODE_LENGTH, Elem>::NODE_XXX* node, uint32_t limit);
   void compact();
   void sort();
   void clear_array();
@@ -248,6 +254,10 @@ public:
 
   void record(oop obj);
   void iterate(ObjectClosure* closure);
+
+  //void visit(Elem);
+  //void visit(Array<NODE_LENGTH, Elem>::NODE_XXX* node, uint32_t limit);
+  void visit(G1SegmentedArrayBuffer<mtGC>* node, uint32_t limit);
 };
 
 
