@@ -28,8 +28,98 @@
 #include "gc/g1/g1GCPauseType.hpp"
 #include "utilities/globalDefinitions.hpp"
 
+class G1Policy;
+class G1CollectedHeap;
+
 // State of the G1 collection.
 class G1CollectorState {
+
+public:
+  enum GCState {
+    PureYoungGC,
+    CMStartGC,
+    CMInProgressYoungGC,
+    BeforeMixedYoungGC,
+    MixedGC,
+    FullGC,
+    GCStateNum
+  };
+
+private:
+  GCState _state;
+  GCState _prev_state;
+  G1Policy* _policy;
+
+public:
+  void transform_to_full_gc();
+  void transform_after_full_gc();
+  void try_transform_to_InitialCM();
+  // This sets the initiate_conc_mark_if_possible() flag to start a
+  // new cycle, as long as we are not already in one. It's best if it
+  // is called during a safepoint when the test whether a cycle is in
+  // progress or not is stable.
+  bool force_concurrent_start_if_outside_cycle(GCCause::Cause gc_cause);
+  void maybe_start_marking(const char* source);
+  void transform_to_cm_start();
+  void transform_from_cm_in_progress(bool mixed_gc_pending);
+  void transform_from_before_mixed();
+  void transform_from_mixed();
+
+  // Decide whether this garbage collection pause should be a concurrent start
+  // pause and update the collector state accordingly.
+  // We decide on a concurrent start pause if initiate_conc_mark_if_possible() is
+  // true, the concurrent marking thread has completed its work for the previous
+  // cycle, and we are not shutting down the VM.
+  // This must be called at the very beginning of an evacuation pause.
+  void decide_on_concurrent_start_pause();
+  void transform_at_young_gc_end(G1GCPauseType this_pause);
+  void transform_to_mark_in_progress_at_young_gc_end(G1GCPauseType this_pause, bool concurrent_operation_is_full_mark);
+
+private:
+  void set_state(GCState from, GCState to);
+  bool transform(GCState from, GCState to);
+  const char* to_string(GCState) const;
+
+  bool about_to_start_mixed_phase() const;
+  void record_concurrent_mark_init_end();
+  void initiate_conc_mark();
+
+public:
+  bool need_to_start_conc_mark(const char* source, size_t alloc_word_size = 0);
+  bool concurrent_operation_is_full_mark(const char* msg);
+
+private:
+  void set_initiate_conc_mark_if_possible(bool v) { _initiate_conc_mark_if_possible = v; }
+
+  DEBUG_ONLY(
+  // Phase setters
+  void set_in_young_only_phase(bool v) { _in_young_only_phase = v; }
+
+  // Pause setters
+  void set_in_young_gc_before_mixed(bool v) { _in_young_gc_before_mixed = v; }
+  void set_in_concurrent_start_gc(bool v) { _in_concurrent_start_gc = v; }
+  void set_in_full_gc(bool v) { _in_full_gc = v; }
+
+  void set_mark_or_rebuild_in_progress(bool v) { _mark_or_rebuild_in_progress = v; }
+  )
+
+  bool mark_or_rebuild_in_progress() const {
+    bool res2 = _state == CMInProgressYoungGC;
+    DEBUG_ONLY(bool res = _mark_or_rebuild_in_progress;)
+    DEBUG_ONLY(assert(res == res2, "Must be: %s, %s", to_string(_state), BOOL_TO_STR(res));)
+    return res2;
+  }
+
+private:
+  // At the end of a pause we check the heap occupancy and we decide
+  // whether we will start a marking cycle during the next pause. If
+  // we decide that we want to do that, set this parameter. This parameter will
+  // stay set until the beginning of a subsequent pause (not necessarily
+  // the next one) when we decide that we will indeed start a marking cycle and
+  // do the concurrent start phase work.
+  volatile bool _initiate_conc_mark_if_possible;
+
+  DEBUG_ONLY(
   // Indicates whether we are in the phase where we do partial gcs that only contain
   // the young generation. Not set while _in_full_gc is set.
   bool _in_young_only_phase;
@@ -52,62 +142,68 @@ class G1CollectorState {
   // concurrent start work.
   volatile bool _in_concurrent_start_gc;
 
-  // At the end of a pause we check the heap occupancy and we decide
-  // whether we will start a marking cycle during the next pause. If
-  // we decide that we want to do that, set this parameter. This parameter will
-  // stay set until the beginning of a subsequent pause (not necessarily
-  // the next one) when we decide that we will indeed start a marking cycle and
-  // do the concurrent start phase work.
-  volatile bool _initiate_conc_mark_if_possible;
-
   // Marking or rebuilding remembered set work is in progress. Set from the end
   // of the concurrent start pause to the end of the Cleanup pause.
   bool _mark_or_rebuild_in_progress;
+
+  // Set during a full gc pause.
+  bool _in_full_gc;
+  )
 
   // The next bitmap is currently being cleared or about to be cleared. TAMS and bitmap
   // may be out of sync.
   bool _clearing_next_bitmap;
 
-  // Set during a full gc pause.
-  bool _in_full_gc;
+  bool _mark_or_rebuild_previously;
 
 public:
-  G1CollectorState() :
-    _in_young_only_phase(true),
-    _in_young_gc_before_mixed(false),
+  G1CollectorState(G1Policy* policy);
 
-    _in_concurrent_start_gc(false),
-    _initiate_conc_mark_if_possible(false),
-
-    _mark_or_rebuild_in_progress(false),
-    _clearing_next_bitmap(false),
-    _in_full_gc(false) { }
-
-  // Phase setters
-  void set_in_young_only_phase(bool v) { _in_young_only_phase = v; }
-
-  // Pause setters
-  void set_in_young_gc_before_mixed(bool v) { _in_young_gc_before_mixed = v; }
-  void set_in_concurrent_start_gc(bool v) { _in_concurrent_start_gc = v; }
-  void set_in_full_gc(bool v) { _in_full_gc = v; }
-
-  void set_initiate_conc_mark_if_possible(bool v) { _initiate_conc_mark_if_possible = v; }
-
-  void set_mark_or_rebuild_in_progress(bool v) { _mark_or_rebuild_in_progress = v; }
   void set_clearing_next_bitmap(bool v) { _clearing_next_bitmap = v; }
 
   // Phase getters
-  bool in_young_only_phase() const { return _in_young_only_phase && !_in_full_gc; }
-  bool in_mixed_phase() const { return !in_young_only_phase() && !_in_full_gc; }
+  bool in_young_only_phase() const {
+    DEBUG_ONLY(bool res = _in_young_only_phase && !_in_full_gc;)
+    bool res2 = _state == PureYoungGC || _state == CMStartGC ||
+                _state == CMInProgressYoungGC || _state == BeforeMixedYoungGC;
+    DEBUG_ONLY(assert(res == res2, "Must be");)
+    return res2;
+  }
+  bool in_mixed_phase() const {
+    DEBUG_ONLY(bool res = !in_young_only_phase() && !_in_full_gc;)
+    bool res2 = _state == MixedGC;
+    DEBUG_ONLY(assert(res == res2, "Must be");)
+    return res2;
+  }
 
   // Specific pauses
-  bool in_young_gc_before_mixed() const { return _in_young_gc_before_mixed; }
-  bool in_full_gc() const { return _in_full_gc; }
-  bool in_concurrent_start_gc() const { return _in_concurrent_start_gc; }
+  bool in_young_gc_before_mixed() const {
+    DEBUG_ONLY(bool res = _in_young_gc_before_mixed;)
+    bool res2 = _state == BeforeMixedYoungGC;
+    DEBUG_ONLY(assert(res == res2, "Must be");)
+    return res2;
+  }
+  bool in_full_gc() const {
+    DEBUG_ONLY(bool res = _in_full_gc;)
+    bool res2 = _state == FullGC;
+    DEBUG_ONLY(assert(res == res2, "Must be");)
+    return res2;
+  }
+  bool in_concurrent_start_gc() const {
+    bool res2 = _state == CMStartGC;
+    DEBUG_ONLY(bool res = _in_concurrent_start_gc;)
+    DEBUG_ONLY(assert(res == res2, "Must be");)
+    return res2;
+  }
 
-  bool initiate_conc_mark_if_possible() const { return _initiate_conc_mark_if_possible; }
+  bool initiate_conc_mark_if_possible() const {
+    return _initiate_conc_mark_if_possible;
+  }
 
-  bool mark_or_rebuild_in_progress() const { return _mark_or_rebuild_in_progress; }
+  bool mark_or_rebuild_in_progress_or_previously() const {
+    return _mark_or_rebuild_previously || mark_or_rebuild_in_progress();
+  }
+
   bool clearing_next_bitmap() const { return _clearing_next_bitmap; }
 
   // Calculate GC Pause Type from internal state.

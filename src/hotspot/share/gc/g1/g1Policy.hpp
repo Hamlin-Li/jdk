@@ -53,6 +53,8 @@ class GCPolicyCounters;
 class STWGCTimer;
 
 class G1Policy: public CHeapObj<mtGC> {
+  friend G1CollectorState;
+
  private:
 
   static G1IHOPControl* create_ihop_control(const G1OldGenAllocationTracker* old_gen_alloc_tracker,
@@ -112,7 +114,7 @@ class G1Policy: public CHeapObj<mtGC> {
   G1ConcurrentStartToMixedTimeTracker _concurrent_start_to_mixed;
 
   bool should_update_surv_rate_group_predictors() {
-    return collector_state()->in_young_only_phase() && !collector_state()->mark_or_rebuild_in_progress();
+    return collector_state()->in_young_only_phase() && !collector_state()->mark_or_rebuild_in_progress_or_previously();
   }
 
   double logged_cards_processing_time() const;
@@ -264,8 +266,6 @@ public:
 
 private:
   void clear_collection_set_candidates();
-  // Sets up marking if proper conditions are met.
-  void maybe_start_marking();
   // Manage time-to-mixed tracking.
   void update_time_to_mixed_tracking(G1GCPauseType gc_type, double start, double end);
   // Record the given STW pause with the given start and end times (in s).
@@ -288,8 +288,6 @@ public:
 
   virtual ~G1Policy();
 
-  G1CollectorState* collector_state() const;
-
   G1GCPhaseTimes* phase_times() const;
 
   // Check the current value of the young list RSet length and
@@ -306,11 +304,7 @@ public:
   void record_young_gc_pause_start();
   void record_young_gc_pause_end(bool evacuation_failed);
 
-  bool need_to_start_conc_mark(const char* source, size_t alloc_word_size = 0);
-
   bool concurrent_operation_is_full_mark(const char* msg = NULL);
-
-  bool about_to_start_mixed_phase() const;
 
   // Record the start and end of the actual collection part of the evacuation pause.
   void record_young_collection_start();
@@ -319,9 +313,6 @@ public:
   // Record the start and end of a full collection.
   void record_full_collection_start();
   void record_full_collection_end();
-
-  // Must currently be called while the world is stopped.
-  void record_concurrent_mark_init_end();
 
   // Record start and end of remark.
   void record_concurrent_mark_remark_start();
@@ -362,26 +353,7 @@ private:
   // regions and update the associated members.
   void update_survival_estimates_for_next_collection();
 
-  // Set the state to start a concurrent marking cycle and clear
-  // _initiate_conc_mark_if_possible because it has now been
-  // acted on.
-  void initiate_conc_mark();
-
 public:
-  // This sets the initiate_conc_mark_if_possible() flag to start a
-  // new cycle, as long as we are not already in one. It's best if it
-  // is called during a safepoint when the test whether a cycle is in
-  // progress or not is stable.
-  bool force_concurrent_start_if_outside_cycle(GCCause::Cause gc_cause);
-
-  // Decide whether this garbage collection pause should be a concurrent start
-  // pause and update the collector state accordingly.
-  // We decide on a concurrent start pause if initiate_conc_mark_if_possible() is
-  // true, the concurrent marking thread has completed its work for the previous
-  // cycle, and we are not shutting down the VM.
-  // This must be called at the very beginning of an evacuation pause.
-  void decide_on_concurrent_start_pause();
-
   size_t young_list_target_length() const { return _young_list_target_length; }
 
   bool should_allocate_mutator_region() const;
@@ -445,6 +417,15 @@ public:
   void update_max_gc_locker_expansion();
 
   void update_survivors_policy();
+
+private:
+  // indicates whether we are in young or mixed GC mode
+  G1CollectorState _collector_state;
+
+public:
+  const G1CollectorState* collector_state() const  { return &_collector_state; }
+  G1CollectorState* collector_state()  { return &_collector_state; }
+  size_t get_conc_mark_start_threshold();
 };
 
 #endif // SHARE_GC_G1_G1POLICY_HPP

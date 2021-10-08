@@ -841,7 +841,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_humongous(size_t word_size) {
   // the check before we do the actual allocation. The reason for doing it
   // before the allocation is that we avoid having to keep track of the newly
   // allocated memory while we do a GC.
-  if (policy()->need_to_start_conc_mark("concurrent humongous allocation",
+  if (collector_state()->need_to_start_conc_mark("concurrent humongous allocation",
                                         word_size)) {
     collect(GCCause::_g1_humongous_allocation);
   }
@@ -952,8 +952,8 @@ HeapWord* G1CollectedHeap::attempt_allocation_at_safepoint(size_t word_size,
     return _allocator->attempt_allocation_locked(word_size);
   } else {
     HeapWord* result = humongous_obj_allocate(word_size);
-    if (result != NULL && policy()->need_to_start_conc_mark("STW humongous allocation")) {
-      collector_state()->set_initiate_conc_mark_if_possible(true);
+    if (result != NULL) {
+      collector_state()->maybe_start_marking("STW humongous allocation");
     }
     return result;
   }
@@ -1457,7 +1457,6 @@ G1CollectedHeap::G1CollectedHeap() :
   _num_humongous_objects(0),
   _num_humongous_reclaim_candidates(0),
   _hr_printer(),
-  _collector_state(),
   _old_marking_cycles_started(0),
   _old_marking_cycles_completed(0),
   _eden(),
@@ -2231,7 +2230,7 @@ void G1CollectedHeap::start_concurrent_gc_for_metadata_allocation(GCCause::Cause
 
   // At this point we are supposed to start a concurrent cycle. We
   // will do so if one is not already in progress.
-  bool should_start = policy()->force_concurrent_start_if_outside_cycle(gc_cause);
+  bool should_start = collector_state()->force_concurrent_start_if_outside_cycle(gc_cause);
   if (should_start) {
     double pause_target = policy()->max_pause_time_ms();
     do_collection_pause_at_safepoint(pause_target);
@@ -2871,7 +2870,7 @@ void G1CollectedHeap::do_collection_pause_at_safepoint_helper(double target_paus
 
   _bytes_used_during_gc = 0;
 
-  policy()->decide_on_concurrent_start_pause();
+  collector_state()->decide_on_concurrent_start_pause();
   // Record whether this pause may need to trigger a concurrent operation. Later,
   // when we signal the G1ConcurrentMarkThread, the collector state has already
   // been reset for the next pause.
@@ -3448,4 +3447,12 @@ GrowableArray<GCMemoryManager*> G1CollectedHeap::memory_managers() {
 
 GrowableArray<MemoryPool*> G1CollectedHeap::memory_pools() {
   return _monitoring_support->memory_pools();
+}
+
+const G1CollectorState* G1CollectedHeap::collector_state() const {
+  return _policy->collector_state();
+}
+
+G1CollectorState* G1CollectedHeap::collector_state() {
+  return _policy->collector_state();
 }

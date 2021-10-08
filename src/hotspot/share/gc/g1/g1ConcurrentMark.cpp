@@ -511,7 +511,7 @@ void G1ConcurrentMark::humongous_object_eagerly_reclaimed(HeapRegion* r) {
   clear_mark_if_set(_prev_mark_bitmap, r->bottom());
   clear_mark_if_set(_next_mark_bitmap, r->bottom());
 
-  if (!_g1h->collector_state()->mark_or_rebuild_in_progress()) {
+  if (!_g1h->collector_state()->mark_or_rebuild_in_progress_or_previously()) {
     return;
   }
 
@@ -655,7 +655,7 @@ private:
         // will have them as guarantees at the beginning / end of the bitmap
         // clearing to get some checking in the product.
         assert(!suspendible() || _cm->cm_thread()->in_progress(), "invariant");
-        assert(!suspendible() || !G1CollectedHeap::heap()->collector_state()->mark_or_rebuild_in_progress(), "invariant");
+        assert(!suspendible() || !G1CollectedHeap::heap()->collector_state()->mark_or_rebuild_in_progress_or_previously(), "invariant");
 
         // Abort iteration if necessary.
         if (has_aborted()) {
@@ -714,13 +714,13 @@ void G1ConcurrentMark::cleanup_for_next_mark() {
   // marking bitmap and getting it ready for the next cycle. During
   // this time no other cycle can start. So, let's make sure that this
   // is the case.
-  guarantee(!_g1h->collector_state()->mark_or_rebuild_in_progress(), "invariant");
+  guarantee(!_g1h->collector_state()->mark_or_rebuild_in_progress_or_previously(), "invariant");
 
   clear_next_bitmap(_concurrent_workers, true);
 
   // Repeat the asserts from above.
   guarantee(cm_thread()->in_progress(), "invariant");
-  guarantee(!_g1h->collector_state()->mark_or_rebuild_in_progress(), "invariant");
+  guarantee(!_g1h->collector_state()->mark_or_rebuild_in_progress_or_previously(), "invariant");
 }
 
 void G1ConcurrentMark::clear_next_bitmap(WorkGang* workers) {
@@ -1956,7 +1956,7 @@ public:
 
 void G1ConcurrentMark::verify_no_collection_set_oops() {
   assert(SafepointSynchronize::is_at_safepoint(), "should be at a safepoint");
-  if (!_g1h->collector_state()->mark_or_rebuild_in_progress()) {
+  if (!_g1h->collector_state()->mark_or_rebuild_in_progress_or_previously()) {
     return;
   }
 

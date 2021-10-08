@@ -62,7 +62,7 @@ void G1YoungGCEvacFailureInjector::arm_if_needed() {
     G1CollectorState* collector_state = g1h->collector_state();
     const bool in_young_only_phase = collector_state->in_young_only_phase();
     const bool in_concurrent_start_gc = collector_state->in_concurrent_start_gc();
-    const bool mark_or_rebuild_in_progress = collector_state->mark_or_rebuild_in_progress();
+    const bool mark_or_rebuild_in_progress = collector_state->mark_or_rebuild_in_progress_or_previously();
 
     _inject_evacuation_failure_for_current_gc &=
       arm_if_needed_for_gc_type(in_young_only_phase,

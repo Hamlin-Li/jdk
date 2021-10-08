@@ -281,9 +281,6 @@ private:
                                 uint gc_counter,
                                 uint old_marking_started_before);
 
-  // indicates whether we are in young or mixed GC mode
-  G1CollectorState _collector_state;
-
   // Keeps track of how many "old marking cycles" (i.e., Full GCs or
   // concurrent cycles) we have started.
   volatile uint _old_marking_cycles_started;
@@ -914,8 +911,8 @@ public:
     return "G1";
   }
 
-  const G1CollectorState* collector_state() const { return &_collector_state; }
-  G1CollectorState* collector_state() { return &_collector_state; }
+  const G1CollectorState* collector_state() const;
+  G1CollectorState* collector_state();
 
   // The current policy object for the collector.
   G1Policy* policy() const { return _policy; }

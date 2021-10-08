@@ -93,7 +93,7 @@ void VM_G1TryInitiateConcMark::doit() {
     // a young-only or mixed GC (depending on phase).  For a user request
     // there's no point in even doing that much, so done.  For some non-user
     // requests the alternative GC might still be needed.
-  } else if (!g1h->policy()->force_concurrent_start_if_outside_cycle(_gc_cause)) {
+  } else if (!g1h->collector_state()->force_concurrent_start_if_outside_cycle(_gc_cause)) {
     // Failure to force the next GC pause to be a concurrent start indicates
     // there is already a concurrent marking cycle in progress.  Set flag
     // to notify the caller and return immediately.
