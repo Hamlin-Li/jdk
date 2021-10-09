@@ -23,9 +23,9 @@
  */
 
 #include "precompiled.hpp"
-#include "gc/g1/g1ConcurrentMarkThread.inline.hpp"
 #include "gc/g1/g1CollectedHeap.hpp"
 #include "gc/g1/g1CollectorState.hpp"
+#include "gc/g1/g1ConcurrentMarkThread.inline.hpp"
 #include "gc/g1/g1GCPauseType.hpp"
 #include "gc/g1/g1Policy.hpp"
 #include "gc/shared/concurrentGCBreakpoints.hpp"
@@ -60,11 +60,13 @@ G1CollectorState::G1CollectorState(G1Policy* policy) :
   _policy(policy),
 
   _initiate_conc_mark_if_possible(false),
-  DEBUG_ONLY(_in_young_only_phase(true)),
-  DEBUG_ONLY(_in_young_gc_before_mixed(false)),
-  DEBUG_ONLY(_in_concurrent_start_gc(false)),
-  DEBUG_ONLY(_mark_or_rebuild_in_progress(false)),
-  DEBUG_ONLY(_in_full_gc(false)),
+#ifdef ASSERT
+  _in_young_only_phase(true),
+  _in_young_gc_before_mixed(false),
+  _in_concurrent_start_gc(false),
+  _mark_or_rebuild_in_progress(false),
+  _in_full_gc(false),
+#endif // ASSERT
   _clearing_next_bitmap(false),
   _mark_or_rebuild_previously(false) { }
 
