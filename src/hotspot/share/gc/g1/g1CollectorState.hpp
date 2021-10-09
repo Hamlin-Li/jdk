@@ -163,37 +163,47 @@ public:
 
   // Phase getters
   bool in_young_only_phase() const {
-    DEBUG_ONLY(bool res = _in_young_only_phase && !_in_full_gc;)
-    bool res2 = _state == PureYoungGC || _state == CMStartGC ||
+    bool res = _state == PureYoungGC || _state == CMStartGC ||
                 _state == CMInProgressYoungGC || _state == BeforeMixedYoungGC;
-    DEBUG_ONLY(assert(res == res2, "Must be");)
-    return res2;
+    DEBUG_ONLY(
+    bool res2 = _in_young_only_phase && !_in_full_gc;
+    assert(res == res2, "Must be");
+    )
+    return res;
   }
   bool in_mixed_phase() const {
-    DEBUG_ONLY(bool res = !in_young_only_phase() && !_in_full_gc;)
-    bool res2 = _state == MixedGC;
-    DEBUG_ONLY(assert(res == res2, "Must be");)
-    return res2;
+    bool res = _state == MixedGC;
+    DEBUG_ONLY(
+    bool res2 = !in_young_only_phase() && !_in_full_gc;
+    assert(res == res2, "Must be");
+    )
+    return res;
   }
 
   // Specific pauses
   bool in_young_gc_before_mixed() const {
-    DEBUG_ONLY(bool res = _in_young_gc_before_mixed;)
-    bool res2 = _state == BeforeMixedYoungGC;
-    DEBUG_ONLY(assert(res == res2, "Must be");)
-    return res2;
+    bool res = _state == BeforeMixedYoungGC;
+    DEBUG_ONLY(
+    bool res2 = _in_young_gc_before_mixed;
+    assert(res == res2, "Must be");
+    )
+    return res;
   }
   bool in_full_gc() const {
-    DEBUG_ONLY(bool res = _in_full_gc;)
-    bool res2 = _state == FullGC;
-    DEBUG_ONLY(assert(res == res2, "Must be");)
-    return res2;
+    bool res = _state == FullGC;
+    DEBUG_ONLY(
+    bool res2 = _in_full_gc;
+    assert(res == res2, "Must be");
+    )
+    return res;
   }
   bool in_concurrent_start_gc() const {
-    bool res2 = _state == CMStartGC;
-    DEBUG_ONLY(bool res = _in_concurrent_start_gc;)
-    DEBUG_ONLY(assert(res == res2, "Must be");)
-    return res2;
+    bool res = _state == CMStartGC;
+    DEBUG_ONLY(
+    bool res2 = _in_concurrent_start_gc;
+    assert(res == res2, "Must be");
+    )
+    return res;
   }
 
   bool initiate_conc_mark_if_possible() const {

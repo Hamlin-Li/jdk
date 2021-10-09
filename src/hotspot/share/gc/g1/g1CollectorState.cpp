@@ -23,7 +23,7 @@
  */
 
 #include "precompiled.hpp"
-#include "gc/g1/g1ConcurrentMarkThread.hpp"
+#include "gc/g1/g1ConcurrentMarkThread.inline.hpp"
 #include "gc/g1/g1CollectedHeap.hpp"
 #include "gc/g1/g1CollectorState.hpp"
 #include "gc/g1/g1GCPauseType.hpp"
@@ -60,16 +60,12 @@ G1CollectorState::G1CollectorState(G1Policy* policy) :
   _policy(policy),
 
   _initiate_conc_mark_if_possible(false),
-
-  _in_young_only_phase(true),
-  _in_young_gc_before_mixed(false),
-
-  _in_concurrent_start_gc(false),
-
-  _mark_or_rebuild_in_progress(false),
-  _in_full_gc(false),
+  DEBUG_ONLY(_in_young_only_phase(true)),
+  DEBUG_ONLY(_in_young_gc_before_mixed(false)),
+  DEBUG_ONLY(_in_concurrent_start_gc(false)),
+  DEBUG_ONLY(_mark_or_rebuild_in_progress(false)),
+  DEBUG_ONLY(_in_full_gc(false)),
   _clearing_next_bitmap(false),
-
   _mark_or_rebuild_previously(false) { }
 
 
@@ -191,7 +187,8 @@ void G1CollectorState::transform_after_full_gc() {
   set_clearing_next_bitmap(false);
   set_in_full_gc(false);
   )
-  //transform(FullGC, conc_mark ? CMStartGC : PureYoungGC);
+  // It will go through PureYoungGC, rather than go directly to CMStartGC
+  // transform(FullGC, conc_mark ? CMStartGC : PureYoungGC);
   transform(FullGC, PureYoungGC);
   bool conc_mark = need_to_start_conc_mark("end of Full GC");
   set_initiate_conc_mark_if_possible(conc_mark);
@@ -434,14 +431,14 @@ void G1CollectorState::transform_to_mark_in_progress_at_young_gc_end(G1GCPauseTy
 }
 
 bool G1CollectorState::about_to_start_mixed_phase() const {
-  DEBUG_ONLY(
-  bool res = _policy->_g1h->concurrent_mark()->cm_thread()->in_progress()
-             || in_young_gc_before_mixed();
-  )
-  bool res2 = _policy->_g1h->concurrent_mark()->cm_thread()->in_progress() ||
+  bool res = _policy->_g1h->concurrent_mark()->cm_thread()->in_progress() ||
               _state == CMInProgressYoungGC || _state == BeforeMixedYoungGC;
-  DEBUG_ONLY(assert(res2 == res, "Must be, %s, %s", BOOL_TO_STR(res2), to_string(_state));)
-  return res2;
+  DEBUG_ONLY(
+  bool res2 = _policy->_g1h->concurrent_mark()->cm_thread()->in_progress() ||
+            in_young_gc_before_mixed();
+  assert(res2 == res, "Must be, %s, %s", BOOL_TO_STR(res), to_string(_state));
+  )
+  return res;
 }
 
 bool G1CollectorState::need_to_start_conc_mark(const char* source, size_t alloc_word_size) {
