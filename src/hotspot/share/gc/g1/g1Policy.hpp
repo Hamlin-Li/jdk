@@ -80,10 +80,6 @@ class G1Policy: public CHeapObj<mtGC> {
   uint _young_list_target_length;
   uint _young_list_fixed_length;
 
-  // The max number of regions we can extend the eden by while the GC
-  // locker is active. This should be >= _young_list_target_length;
-  uint _young_list_max_length;
-
   // The survivor rate groups below must be initialized after the predictor because they
   // indirectly use it through the "this" object passed to their constructor.
   G1SurvRateGroup* _eden_surv_rate_group;
@@ -386,12 +382,6 @@ public:
 
   bool should_allocate_mutator_region() const;
 
-  bool can_expand_young_list() const;
-
-  uint young_list_max_length() const {
-    return _young_list_max_length;
-  }
-
   bool use_adaptive_young_list_length() const;
 
   void transfer_survivors_to_cset(const G1SurvivorRegions* survivors);
@@ -441,8 +431,6 @@ public:
   }
 
   void print_age_table();
-
-  void update_max_gc_locker_expansion();
 
   void update_survivors_policy();
 };

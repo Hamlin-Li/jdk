@@ -63,7 +63,6 @@ G1Policy::G1Policy(STWGCTimer* gc_timer) :
   _full_collection_start_sec(0.0),
   _young_list_target_length(0),
   _young_list_fixed_length(0),
-  _young_list_max_length(0),
   _eden_surv_rate_group(new G1SurvRateGroup()),
   _survivor_surv_rate_group(new G1SurvRateGroup()),
   _reserve_factor((double) G1ReservePercent / 100.0),
@@ -212,7 +211,6 @@ uint G1Policy::update_young_list_max_and_target_length() {
 
 uint G1Policy::update_young_list_max_and_target_length(size_t rs_length) {
   uint unbounded_target_length = update_young_list_target_length(rs_length);
-  update_max_gc_locker_expansion();
   return unbounded_target_length;
 }
 
@@ -968,12 +966,6 @@ bool G1Policy::should_allocate_mutator_region() const {
   return young_list_length < young_list_target_length;
 }
 
-bool G1Policy::can_expand_young_list() const {
-  uint young_list_length = _g1h->young_regions_count();
-  uint young_list_max_length = _young_list_max_length;
-  return young_list_length < young_list_max_length;
-}
-
 bool G1Policy::use_adaptive_young_list_length() const {
   return _young_gen_sizer.use_adaptive_young_list_length();
 }
@@ -985,21 +977,6 @@ size_t G1Policy::desired_survivor_size(uint max_regions) const {
 
 void G1Policy::print_age_table() {
   _survivors_age_table.print_age_table(_tenuring_threshold);
-}
-
-void G1Policy::update_max_gc_locker_expansion() {
-  uint expansion_region_num = 0;
-  if (GCLockerEdenExpansionPercent > 0) {
-    double perc = (double) GCLockerEdenExpansionPercent / 100.0;
-    double expansion_region_num_d = perc * (double) _young_list_target_length;
-    // We use ceiling so that if expansion_region_num_d is > 0.0 (but
-    // less than 1.0) we'll get 1.
-    expansion_region_num = (uint) ceil(expansion_region_num_d);
-  } else {
-    assert(expansion_region_num == 0, "sanity");
-  }
-  _young_list_max_length = _young_list_target_length + expansion_region_num;
-  assert(_young_list_target_length <= _young_list_max_length, "post-condition");
 }
 
 // Calculates survivor space parameters.

@@ -106,11 +106,7 @@ void VM_G1TryInitiateConcMark::doit() {
     // we've rejected this request.
     _whitebox_attached = true;
   } else if (!g1h->do_collection_pause_at_safepoint(_target_pause_time_ms)) {
-    // Failure to perform the collection at all occurs because GCLocker is
-    // active, and we have the bad luck to be the collection request that
-    // makes a later _gc_locker collection needed.  (Else we would have hit
-    // the GCLocker check in the prologue.)
-    _transient_failure = true;
+    ShouldNotReachHere();
   } else if (g1h->should_upgrade_to_full_gc()) {
     _gc_succeeded = g1h->upgrade_to_full_collection();
   } else {

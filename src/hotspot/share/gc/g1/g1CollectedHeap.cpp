@@ -388,8 +388,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_slow(size_t word_size) {
   // fails to perform the allocation. b) is the only case when we'll
   // return NULL.
   HeapWord* result = NULL;
-  for (uint try_count = 1, gclocker_retry_count = 0; /* we'll return */; try_count += 1) {
-    bool should_try_gc;
+  for (uint try_count = 1; /* we'll return */; try_count += 1) {
     bool preventive_collection_required = false;
     uint gc_count_before;
 
@@ -412,29 +411,13 @@ HeapWord* G1CollectedHeap::attempt_allocation_slow(size_t word_size) {
         if (result != NULL) {
           return result;
         }
-
-        // If the GCLocker is active and we are bound for a GC, try expanding young gen.
-        // This is different to when only GCLocker::needs_gc() is set: try to avoid
-        // waiting because the GCLocker is active to not wait too long.
-        if (GCLocker::is_active_and_needs_gc() && policy()->can_expand_young_list()) {
-          // No need for an ergo message here, can_expand_young_list() does this when
-          // it returns true.
-          result = _allocator->attempt_allocation_force(word_size);
-          if (result != NULL) {
-            return result;
-          }
-        }
       }
 
-      // Only try a GC if the GCLocker does not signal the need for a GC. Wait until
-      // the GCLocker initiated GC has been performed and then retry. This includes
-      // the case when the GC Locker is not active but has not been performed.
-      should_try_gc = !GCLocker::needs_gc();
       // Read the GC count while still holding the Heap_lock.
       gc_count_before = total_collections();
     }
 
-    if (should_try_gc) {
+    {
       GCCause::Cause gc_cause = preventive_collection_required ? GCCause::_g1_preventive_collection
                                                               : GCCause::_g1_inc_collection_pause;
       bool succeeded;
@@ -455,19 +438,6 @@ HeapWord* G1CollectedHeap::attempt_allocation_slow(size_t word_size) {
       }
       log_trace(gc, alloc)("%s: Unsuccessfully scheduled collection allocating " SIZE_FORMAT " words",
                            Thread::current()->name(), word_size);
-    } else {
-      // Failed to schedule a collection.
-      if (gclocker_retry_count > GCLockerRetryAllocationCount) {
-        log_warning(gc, alloc)("%s: Retried waiting for GCLocker too often allocating "
-                               SIZE_FORMAT " words", Thread::current()->name(), word_size);
-        return NULL;
-      }
-      log_trace(gc, alloc)("%s: Stall until clear", Thread::current()->name());
-      // The GCLocker is either active or the GCLocker initiated
-      // GC has not yet been performed. Stall until it is and
-      // then retry the allocation.
-      GCLocker::stall_until_clear();
-      gclocker_retry_count += 1;
     }
 
     // We can reach here if we were unsuccessful in scheduling a
@@ -851,8 +821,7 @@ HeapWord* G1CollectedHeap::attempt_allocation_humongous(size_t word_size) {
   // fails to perform the allocation. b) is the only case when we'll
   // return NULL.
   HeapWord* result = NULL;
-  for (uint try_count = 1, gclocker_retry_count = 0; /* we'll return */; try_count += 1) {
-    bool should_try_gc;
+  for (uint try_count = 1; /* we'll return */; try_count += 1) {
     bool preventive_collection_required = false;
     uint gc_count_before;
 
@@ -874,15 +843,11 @@ HeapWord* G1CollectedHeap::attempt_allocation_humongous(size_t word_size) {
         }
       }
 
-      // Only try a GC if the GCLocker does not signal the need for a GC. Wait until
-      // the GCLocker initiated GC has been performed and then retry. This includes
-      // the case when the GC Locker is not active but has not been performed.
-      should_try_gc = !GCLocker::needs_gc();
       // Read the GC count while still holding the Heap_lock.
       gc_count_before = total_collections();
     }
 
-    if (should_try_gc) {
+    {
       GCCause::Cause gc_cause = preventive_collection_required ? GCCause::_g1_preventive_collection
                                                               : GCCause::_g1_humongous_allocation;
       bool succeeded;
@@ -906,19 +871,6 @@ HeapWord* G1CollectedHeap::attempt_allocation_humongous(size_t word_size) {
       }
       log_trace(gc, alloc)("%s: Unsuccessfully scheduled collection allocating " SIZE_FORMAT "",
                            Thread::current()->name(), word_size);
-    } else {
-      // Failed to schedule a collection.
-      if (gclocker_retry_count > GCLockerRetryAllocationCount) {
-        log_warning(gc, alloc)("%s: Retried waiting for GCLocker too often allocating "
-                               SIZE_FORMAT " words", Thread::current()->name(), word_size);
-        return NULL;
-      }
-      log_trace(gc, alloc)("%s: Stall until clear", Thread::current()->name());
-      // The GCLocker is either active or the GCLocker initiated
-      // GC has not yet been performed. Stall until it is and
-      // then retry the allocation.
-      GCLocker::stall_until_clear();
-      gclocker_retry_count += 1;
     }
 
 
@@ -1101,11 +1053,6 @@ bool G1CollectedHeap::do_full_collection(bool explicit_gc,
                                          bool clear_all_soft_refs,
                                          bool do_maximum_compaction) {
   assert_at_safepoint_on_vm_thread();
-
-  if (GCLocker::check_active_before_gc()) {
-    // Full GC was not completed.
-    return false;
-  }
 
   const bool do_clear_all_soft_refs = clear_all_soft_refs ||
       soft_ref_policy()->should_clear_all_soft_refs();
@@ -2184,12 +2131,6 @@ bool G1CollectedHeap::try_collect_concurrently(GCCause::Cause cause,
     // Collection failed and should be retried.
     assert(op.transient_failure(), "invariant");
 
-    if (GCLocker::is_active_and_needs_gc()) {
-      // If GCLocker is active, wait until clear before retrying.
-      LOG_COLLECT_CONCURRENTLY(cause, "gc-locker stall");
-      GCLocker::stall_until_clear();
-    }
-
     LOG_COLLECT_CONCURRENTLY(cause, "retry");
   }
 }
@@ -2200,12 +2141,7 @@ bool G1CollectedHeap::try_collect(GCCause::Cause cause,
     return try_collect_concurrently(cause,
                                     counters_before.total_collections(),
                                     counters_before.old_marking_cycles_started());
-  } else if (GCLocker::should_discard(cause, counters_before.total_collections())) {
-    // Indicate failure to be consistent with VMOp failure due to
-    // another collection slipping in after our gc_count but before
-    // our request is processed.
-    return false;
-  } else if (cause == GCCause::_gc_locker || cause == GCCause::_wb_young_gc
+  } else if (cause == GCCause::_wb_young_gc
              DEBUG_ONLY(|| cause == GCCause::_scavenge_alot)) {
 
     // Schedule a standard evacuation pause. We're setting word_size
@@ -2798,10 +2734,6 @@ void G1CollectedHeap::expand_heap_after_young_collection(){
 bool G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_ms) {
   assert_at_safepoint_on_vm_thread();
   guarantee(!is_gc_active(), "collection is not reentrant");
-
-  if (GCLocker::check_active_before_gc()) {
-    return false;
-  }
 
   do_collection_pause_at_safepoint_helper(target_pause_time_ms);
   return true;
