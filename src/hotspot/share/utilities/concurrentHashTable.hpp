@@ -206,6 +206,8 @@ class ConcurrentHashTable : public CHeapObj<F> {
 
   void* _context;
 
+  GlobalCounter::GlobalCounterScope _scope;
+
   InternalTable* _table;      // Active table.
   InternalTable* _new_table;  // Table we are resizing to.
 
@@ -376,13 +378,16 @@ class ConcurrentHashTable : public CHeapObj<F> {
   void delete_in_bucket(Thread* thread, Bucket* bucket, LOOKUP_FUNC& lookup_f);
 
  public:
-  ConcurrentHashTable(size_t log2size = DEFAULT_START_SIZE_LOG2,
+  ConcurrentHashTable(GlobalCounter::GlobalCounterScope scope = GlobalCounter::DefaultScope,
+                      size_t log2size = DEFAULT_START_SIZE_LOG2,
                       size_t log2size_limit = DEFAULT_MAX_SIZE_LOG2,
                       size_t grow_hint = DEFAULT_GROW_HINT,
                       void* context = NULL);
 
-  explicit ConcurrentHashTable(void* context, size_t log2size = DEFAULT_START_SIZE_LOG2) :
-    ConcurrentHashTable(log2size, DEFAULT_MAX_SIZE_LOG2, DEFAULT_GROW_HINT, context) {}
+  explicit ConcurrentHashTable(void* context,
+                               size_t log2size = DEFAULT_START_SIZE_LOG2,
+                               GlobalCounter::GlobalCounterScope scope = GlobalCounter::DefaultScope) :
+    ConcurrentHashTable(scope, log2size, DEFAULT_MAX_SIZE_LOG2, DEFAULT_GROW_HINT, context) {}
 
   ~ConcurrentHashTable();
 

@@ -122,7 +122,7 @@ void ThreadIdTable::create_table(size_t size) {
   size_t start_size_log =
       size_log > DEFAULT_TABLE_SIZE_LOG ? size_log : DEFAULT_TABLE_SIZE_LOG;
   _current_size = (size_t)1 << start_size_log;
-  _local_table = new ThreadIdTableHash(start_size_log, END_SIZE);
+  _local_table = new ThreadIdTableHash(GlobalCounter::DefaultScope, start_size_log, END_SIZE);
 }
 
 void ThreadIdTable::item_added() {

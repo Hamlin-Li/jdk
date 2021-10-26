@@ -85,7 +85,7 @@ bool StringDedup::Processor::wait_for_requests() const {
   if (!should_terminate()) {
     log_trace(stringdedup)("swapping request storages");
     _storage_for_processing = Atomic::xchg(&_storage_for_requests, _storage_for_processing);
-    GlobalCounter::default_counter()->write_synchronize();
+    GlobalCounter::global_counter(GlobalCounter::StringDedupScope)->write_synchronize();
   }
   // Wait for the now current processing storage object to no longer be used
   // by an in-progress GC.  Again here, the num-dead notification from the

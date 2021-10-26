@@ -215,7 +215,7 @@ inline ConcurrentHashTable<CONFIG, F>::
   ScopedCS::ScopedCS(Thread* thread, ConcurrentHashTable<CONFIG, F>* cht)
     : _thread(thread),
       _cht(cht),
-      _cs_context(GlobalCounter::default_counter()->critical_section_begin(_thread))
+      _cs_context(GlobalCounter::global_counter(_cht->_scope)->critical_section_begin(_thread))
 {
   // This version is published now.
   if (Atomic::load_acquire(&_cht->_invisible_epoch) != NULL) {
@@ -227,7 +227,7 @@ template <typename CONFIG, MEMFLAGS F>
 inline ConcurrentHashTable<CONFIG, F>::
   ScopedCS::~ScopedCS()
 {
-  GlobalCounter::default_counter()->critical_section_end(_thread, _cs_context);
+  GlobalCounter::global_counter(_cht->_scope)->critical_section_end(_thread, _cs_context);
 }
 
 template <typename CONFIG, MEMFLAGS F>
@@ -297,7 +297,7 @@ inline void ConcurrentHashTable<CONFIG, F>::
   // We set this/next version that we are synchronizing for to not published.
   // A reader will zero this flag if it reads this/next version.
   Atomic::release_store(&_invisible_epoch, thread);
-  GlobalCounter::default_counter()->write_synchronize();
+  GlobalCounter::global_counter(_scope)->write_synchronize();
 }
 
 template <typename CONFIG, MEMFLAGS F>
@@ -395,7 +395,7 @@ ConcurrentHashTable<CONFIG, F>::
   // Publish the new table.
   Atomic::release_store(&_table, _new_table);
   // All must see this.
-  GlobalCounter::default_counter()->write_synchronize();
+  GlobalCounter::global_counter(_scope)->write_synchronize();
   // _new_table not read any more.
   _new_table = NULL;
   DEBUG_ONLY(_new_table = (InternalTable*)POISON_PTR;)
@@ -428,7 +428,7 @@ inline void ConcurrentHashTable<CONFIG, F>::
     if (!unzip_bucket(thread, _table, _new_table, even_index, odd_index)) {
       // If bucket is empty, unzip does nothing.
       // We must make sure readers go to new table before we poison the bucket.
-      DEBUG_ONLY(GlobalCounter::default_counter()->write_synchronize();)
+      DEBUG_ONLY(GlobalCounter::global_counter(_scope)->write_synchronize();)
     }
 
     // Unlock for writes into the new table buckets.
@@ -468,7 +468,7 @@ inline bool ConcurrentHashTable<CONFIG, F>::
     return false;
   }
   // Publish the deletion.
-  GlobalCounter::default_counter()->write_synchronize();
+  GlobalCounter::global_counter(_scope)->write_synchronize();
   delete_f(rem_n->value());
   Node::destroy_node(_context, rem_n);
   JFR_ONLY(_stats_rate.remove();)
@@ -495,7 +495,7 @@ inline void ConcurrentHashTable<CONFIG, F>::
   // owner of _resize_lock, us here. There we should not changed it in our
   // own read-side.
   GlobalCounter::CSContext cs_context =
-    GlobalCounter::default_counter()->critical_section_begin(thread);
+    GlobalCounter::global_counter(_scope)->critical_section_begin(thread);
   for (size_t bucket_it = start_idx; bucket_it < stop_idx; bucket_it++) {
     Bucket* bucket = table->get_bucket(bucket_it);
     Bucket* prefetch_bucket = (bucket_it+1) < stop_idx ?
@@ -507,14 +507,14 @@ inline void ConcurrentHashTable<CONFIG, F>::
         continue;
     }
 
-    GlobalCounter::default_counter()->critical_section_end(thread, cs_context);
+    GlobalCounter::global_counter(_scope)->critical_section_end(thread, cs_context);
     // We left critical section but the bucket cannot be removed while we hold
     // the _resize_lock.
     bucket->lock();
     size_t nd = delete_check_nodes(bucket, eval_f, BULK_DELETE_LIMIT, ndel);
     bucket->unlock();
     if (is_mt) {
-      GlobalCounter::default_counter()->write_synchronize();
+      GlobalCounter::global_counter(_scope)->write_synchronize();
     } else {
       write_synchonize_on_visible_epoch(thread);
     }
@@ -524,9 +524,9 @@ inline void ConcurrentHashTable<CONFIG, F>::
       JFR_ONLY(_stats_rate.remove();)
       DEBUG_ONLY(ndel[node_it] = (Node*)POISON_PTR;)
     }
-    cs_context = GlobalCounter::default_counter()->critical_section_begin(thread);
+    cs_context = GlobalCounter::global_counter(_scope)->critical_section_begin(thread);
   }
-  GlobalCounter::default_counter()->critical_section_end(thread, cs_context);
+  GlobalCounter::global_counter(_scope)->critical_section_end(thread, cs_context);
 }
 
 template <typename CONFIG, MEMFLAGS F>
@@ -557,7 +557,7 @@ inline void ConcurrentHashTable<CONFIG, F>::
     }
   }
   if (dels > 0) {
-    GlobalCounter::default_counter()->write_synchronize();
+    GlobalCounter::global_counter(_scope)->write_synchronize();
     for (size_t node_it = 0; node_it < dels; node_it++) {
       Node::destroy_node(_context, ndel[node_it]);
       JFR_ONLY(_stats_rate.remove();)
@@ -1007,8 +1007,8 @@ inline size_t ConcurrentHashTable<CONFIG, F>::
 // Constructor
 template <typename CONFIG, MEMFLAGS F>
 inline ConcurrentHashTable<CONFIG, F>::
-  ConcurrentHashTable(size_t log2size, size_t log2size_limit, size_t grow_hint, void* context)
-    : _context(context), _new_table(NULL), _log2_size_limit(log2size_limit),
+  ConcurrentHashTable(GlobalCounter::GlobalCounterScope scope, size_t log2size, size_t log2size_limit, size_t grow_hint, void* context)
+    : _context(context), _scope(scope), _new_table(NULL), _log2_size_limit(log2size_limit),
       _log2_start_size(log2size), _grow_hint(grow_hint),
       _size_limit_reached(false), _resize_lock_owner(NULL),
       _invisible_epoch(0)

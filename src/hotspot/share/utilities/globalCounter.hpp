@@ -44,10 +44,20 @@ class Thread;
 class GlobalCounter {
  public:
   // Synchronize among different data structures can lead to uncessary conflict,
-  // which lead to performance degragation.
+  // which lead to performance degradation.
   // By giving each data structure a unique scope, this conflict can be avoided.
   enum GlobalCounterScope {
     DefaultScope,
+    // Referred in ConcurrentHashTable
+    ResolvedMethodTableScope,
+    FinalizerTableScope,
+    StringTableScope,
+    SymbolTableScope,
+    // Other scopes
+    StringDedupScope,
+    PtrQueueScope,
+    CardSetScope,
+    // Scope number
     GlobalCounterScopeCount
   };
 

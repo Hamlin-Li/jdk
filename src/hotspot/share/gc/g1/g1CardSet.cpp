@@ -360,7 +360,7 @@ G1CardSet::CardSetPtr G1CardSet::acquire_card_set(CardSetPtr volatile* card_set_
   // Update reference counts under RCU critical section to avoid a
   // use-after-cleapup bug where we increment a reference count for
   // an object whose memory has already been cleaned up and reused.
-  GlobalCounter::CriticalSection cs(Thread::current());
+  GlobalCounter::CriticalSection cs(Thread::current(), GlobalCounter::global_counter(GlobalCounter::CardSetScope));
   while (true) {
     // Get cardsetptr and increment refcount atomically wrt to memory reuse.
     CardSetPtr card_set = Atomic::load_acquire(card_set_addr);
@@ -714,7 +714,7 @@ bool G1CardSet::contains_card(uint card_region, uint card_in_region) {
          "Card %u is beyond max %u", card_in_region, _config->max_cards_in_region());
 
   // Protect the card set from reclamation.
-  GlobalCounter::CriticalSection cs(Thread::current());
+  GlobalCounter::CriticalSection cs(Thread::current(), GlobalCounter::global_counter(GlobalCounter::CardSetScope));
   G1CardSetHashTableValue* table_entry = get_card_set(card_region);
   if (table_entry == nullptr) {
     return false;

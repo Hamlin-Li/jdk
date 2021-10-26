@@ -40,7 +40,7 @@ bool StringDedup::StorageUse::is_used_acquire() const {
 
 StringDedup::StorageUse*
 StringDedup::StorageUse::obtain(StorageUse* volatile* ptr) {
-  GlobalCounter::CriticalSection cs(Thread::current());
+  GlobalCounter::CriticalSection cs(Thread::current(), GlobalCounter::global_counter(GlobalCounter::StringDedupScope));
   StorageUse* storage = Atomic::load(ptr);
   Atomic::inc(&storage->_use_count);
   return storage;
