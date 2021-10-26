@@ -92,8 +92,11 @@ class G1SegmentedArrayBufferList {
   volatile size_t _num_buffers;
   volatile size_t _mem_size;
 
+  GlobalCounter::GlobalCounterScope _scope;
+
 public:
-  G1SegmentedArrayBufferList() : _list(), _num_buffers(0), _mem_size(0) { }
+  G1SegmentedArrayBufferList(GlobalCounter::GlobalCounterScope scope = GlobalCounter::DefaultScope) :
+    _list(), _num_buffers(0), _mem_size(0), _scope(scope) { }
   ~G1SegmentedArrayBufferList() { free_all(); }
 
   void bulk_add(G1SegmentedArrayBuffer<flag>& first, G1SegmentedArrayBuffer<flag>& last, size_t num, size_t mem_size);

@@ -164,7 +164,7 @@ bool BufferNode::Allocator::try_transfer_pending() {
     Atomic::sub(&_pending_count, count);
 
     // Wait for any in-progress pops, to avoid ABA for them.
-    GlobalCounter::write_synchronize();
+    GlobalCounter::default_counter()->write_synchronize();
 
     // Add synchronized nodes to _free_list.
     // Update count first so no underflow in allocate().

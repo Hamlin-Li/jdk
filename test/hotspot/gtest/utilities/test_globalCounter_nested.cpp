@@ -119,7 +119,7 @@ public:
 void RCUNestedWriterThread::main_run() {
   wait_with_state(START_WAIT);
   set_state(SYNCHRONIZING);
-  GlobalCounter::write_synchronize();
+  GlobalCounter::default_counter()->write_synchronize();
   wait_with_state(SYNCHRONIZED);
 }
 

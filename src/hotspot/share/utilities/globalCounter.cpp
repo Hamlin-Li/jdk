@@ -31,18 +31,24 @@
 #include "utilities/globalCounter.hpp"
 #include "utilities/spinYield.hpp"
 
-GlobalCounter::PaddedCounter GlobalCounter::_global_counter;
+//GlobalCounter::PaddedCounter GlobalCounter::_global_counter;
+GlobalCounter GlobalCounter::_global_counters[GlobalCounter::GlobalCounterScopeCount];
 
 class GlobalCounter::CounterThreadCheck : public ThreadClosure {
  private:
   uintx _gbl_cnt;
+  GlobalCounter::GlobalCounterScope _scope;
+
  public:
-  CounterThreadCheck(uintx gbl_cnt) : _gbl_cnt(gbl_cnt) {}
+  CounterThreadCheck(uintx gbl_cnt, GlobalCounter::GlobalCounterScope scope) :
+    _gbl_cnt(gbl_cnt),
+    _scope(scope) {}
+
   void do_thread(Thread* thread) {
     SpinYield yield;
     // Loops on this thread until it has exited the critical read section.
     while(true) {
-      uintx cnt = Atomic::load_acquire(thread->get_rcu_counter());
+      uintx cnt = Atomic::load_acquire(thread->get_rcu_counter(_scope));
       // This checks if the thread's counter is active. And if so is the counter
       // for a pre-existing reader (belongs to this grace period). A pre-existing
       // reader will have a lower counter than the global counter version for this
@@ -58,12 +64,12 @@ class GlobalCounter::CounterThreadCheck : public ThreadClosure {
 };
 
 void GlobalCounter::write_synchronize() {
-  assert((*Thread::current()->get_rcu_counter() & COUNTER_ACTIVE) == 0x0, "must be outside a critcal section");
+  assert((*Thread::current()->get_rcu_counter(_scope) & COUNTER_ACTIVE) == 0x0, "must be outside a critcal section");
   // Atomic::add must provide fence since we have storeload dependency.
-  uintx gbl_cnt = Atomic::add(&_global_counter._counter, COUNTER_INCREMENT);
+  uintx gbl_cnt = Atomic::add(&_padded_counter._counter, COUNTER_INCREMENT);
 
   // Do all RCU threads.
-  CounterThreadCheck ctc(gbl_cnt);
+  CounterThreadCheck ctc(gbl_cnt, _scope);
   for (JavaThreadIteratorWithHandle jtiwh; JavaThread *thread = jtiwh.next(); ) {
     ctc.do_thread(thread);
   }

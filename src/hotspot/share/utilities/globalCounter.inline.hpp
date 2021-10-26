@@ -33,38 +33,40 @@
 inline GlobalCounter::CSContext
 GlobalCounter::critical_section_begin(Thread *thread) {
   assert(thread == Thread::current(), "must be current thread");
-  uintx old_cnt = Atomic::load(thread->get_rcu_counter());
+  uintx old_cnt = Atomic::load(thread->get_rcu_counter(_scope));
   // Retain the old counter value if already active, e.g. nested.
   // Otherwise, set the counter to the current version + active bit.
   uintx new_cnt = old_cnt;
   if ((new_cnt & COUNTER_ACTIVE) == 0) {
-    new_cnt = Atomic::load(&_global_counter._counter) | COUNTER_ACTIVE;
+    new_cnt = Atomic::load(&_padded_counter._counter) | COUNTER_ACTIVE;
   }
-  Atomic::release_store_fence(thread->get_rcu_counter(), new_cnt);
+  Atomic::release_store_fence(thread->get_rcu_counter(_scope), new_cnt);
   return static_cast<CSContext>(old_cnt);
 }
 
 inline void
 GlobalCounter::critical_section_end(Thread *thread, CSContext context) {
   assert(thread == Thread::current(), "must be current thread");
-  assert((*thread->get_rcu_counter() & COUNTER_ACTIVE) == COUNTER_ACTIVE, "must be in critical section");
+  assert((*thread->get_rcu_counter(_scope) & COUNTER_ACTIVE) == COUNTER_ACTIVE, "must be in critical section");
   // Restore the counter value from before the associated begin.
-  Atomic::release_store(thread->get_rcu_counter(),
+  Atomic::release_store(thread->get_rcu_counter(_scope),
                         static_cast<uintx>(context));
 }
 
 class GlobalCounter::CriticalSection {
  private:
   Thread* _thread;
+  GlobalCounter* _counter;
   CSContext _context;
  public:
-  inline CriticalSection(Thread* thread) :
+  inline CriticalSection(Thread* thread, GlobalCounter* counter = GlobalCounter::default_counter()) :
     _thread(thread),
-    _context(GlobalCounter::critical_section_begin(_thread))
+    _counter(counter),
+    _context(_counter->critical_section_begin(_thread))
   {}
 
   inline  ~CriticalSection() {
-    GlobalCounter::critical_section_end(_thread, _context);
+    _counter->critical_section_end(_thread, _context);
   }
 };
 

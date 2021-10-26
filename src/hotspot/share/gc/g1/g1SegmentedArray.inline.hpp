@@ -73,7 +73,7 @@ void G1SegmentedArrayBufferList<flag>::print_on(outputStream* out, const char* p
 
 template<MEMFLAGS flag>
 G1SegmentedArrayBuffer<flag>* G1SegmentedArrayBufferList<flag>::get() {
-  GlobalCounter::CriticalSection cs(Thread::current());
+  GlobalCounter::CriticalSection cs(Thread::current(), GlobalCounter::global_counter(_scope));
 
   G1SegmentedArrayBuffer<flag>* result = _list.pop();
   if (result != nullptr) {
@@ -86,7 +86,7 @@ G1SegmentedArrayBuffer<flag>* G1SegmentedArrayBufferList<flag>::get() {
 template<MEMFLAGS flag>
 G1SegmentedArrayBuffer<flag>* G1SegmentedArrayBufferList<flag>::get_all(size_t& num_buffers,
                                                                         size_t& mem_size) {
-  GlobalCounter::CriticalSection cs(Thread::current());
+  GlobalCounter::CriticalSection cs(Thread::current(), GlobalCounter::global_counter(_scope));
 
   G1SegmentedArrayBuffer<flag>* result = _list.pop_all();
   num_buffers = Atomic::load(&_num_buffers);

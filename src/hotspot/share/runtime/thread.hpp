@@ -48,6 +48,7 @@
 #include "runtime/unhandledOops.hpp"
 #include "utilities/align.hpp"
 #include "utilities/exceptions.hpp"
+#include "utilities/globalCounter.hpp"
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/macros.hpp"
 #if INCLUDE_JFR
@@ -250,10 +251,10 @@ class Thread: public ThreadShadow {
 
   // Support for GlobalCounter
  private:
-  volatile uintx _rcu_counter;
+  volatile uintx _rcu_counter[GlobalCounter::GlobalCounterScopeCount];
  public:
-  volatile uintx* get_rcu_counter() {
-    return &_rcu_counter;
+  volatile uintx* get_rcu_counter(GlobalCounter::GlobalCounterScope scope) {
+    return &_rcu_counter[scope];
   }
 
  public:

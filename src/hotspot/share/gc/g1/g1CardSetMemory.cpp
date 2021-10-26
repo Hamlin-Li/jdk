@@ -72,7 +72,7 @@ bool G1CardSetAllocator<Elem>::try_transfer_pending() {
     Atomic::sub(&_num_pending_nodes, count);
 
     // Wait for any in-progress pops to avoid ABA for them.
-    GlobalCounter::write_synchronize();
+    GlobalCounter::default_counter()->write_synchronize();
     // Add synchronized nodes to _free_node_list.
     // Update count first so there can be no underflow in allocate().
     Atomic::add(&_num_free_nodes, count);
@@ -215,7 +215,7 @@ bool G1CardSetFreePool::G1ReturnMemoryProcessor::return_to_vm(jlong deadline) {
   last->set_next(nullptr);
 
   // Wait for any in-progress pops to avoid ABA for them.
-  GlobalCounter::write_synchronize();
+  GlobalCounter::default_counter()->write_synchronize();
   _source->bulk_add(*_first, *last, keep_num, keep_size);
   _first = cur;
 

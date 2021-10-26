@@ -46,11 +46,11 @@ public:
   void main_run() {
     _wrt_start->signal();
     while (!_exit) {
-      GlobalCounter::CSContext cs_context = GlobalCounter::critical_section_begin(this);
+      GlobalCounter::CSContext cs_context = GlobalCounter::default_counter()->critical_section_begin(this);
       volatile TestData* test = Atomic::load_acquire(_test);
       long value = Atomic::load_acquire(&test->test_value);
       ASSERT_EQ(value, GOOD_VALUE);
-      GlobalCounter::critical_section_end(this, cs_context);
+      GlobalCounter::default_counter()->critical_section_end(this, cs_context);
       {
         GlobalCounter::CriticalSection cs(this);
         volatile TestData* test = Atomic::load_acquire(_test);
@@ -99,7 +99,7 @@ public:
       tmp = new TestData();
       tmp->test_value = GOOD_VALUE;
       Atomic::release_store(&test, tmp);
-      GlobalCounter::write_synchronize();
+      GlobalCounter::default_counter()->write_synchronize();
       free_tmp->test_value = BAD_VALUE;
       delete free_tmp;
     }

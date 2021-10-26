@@ -258,7 +258,7 @@ G1DirtyCardQueueSet::HeadTail G1DirtyCardQueueSet::PausedBuffers::take_previous(
   // There might be other threads examining previous (in concurrent
   // take_previous()).  Synchronize to wait until any such threads are
   // done with such examination before deleting.
-  GlobalCounter::write_synchronize();
+  GlobalCounter::default_counter()->write_synchronize();
   delete previous;
   return result;
 }
