@@ -651,7 +651,7 @@ public:
   Semaphore _done;
 
   RunnerSimpleInserterThread(Semaphore* post) : CHTTestThread(0, 0, NULL, post) {
-    _cht = new TestTable(SIZE_32, SIZE_32);
+    _cht = new TestTable(GlobalCounter::DefaultScope, SIZE_32, SIZE_32);
   };
   virtual ~RunnerSimpleInserterThread(){}
 
@@ -735,7 +735,7 @@ public:
   Semaphore _done;
 
   RunnerDeleteInserterThread(Semaphore* post) : CHTTestThread(0, 0, NULL, post) {
-    _cht = new TestTable(SIZE_32, SIZE_32);
+    _cht = new TestTable(GlobalCounter::DefaultScope, SIZE_32, SIZE_32);
   };
   virtual ~RunnerDeleteInserterThread(){}
 
@@ -861,7 +861,7 @@ public:
   Semaphore _done;
 
   RunnerGSInserterThread(Semaphore* post) : CHTTestThread(0, 0, NULL, post) {
-    _cht = new TestTable(START_SIZE, END_SIZE, 2);
+    _cht = new TestTable(GlobalCounter::DefaultScope, START_SIZE, END_SIZE, 2);
   };
   virtual ~RunnerGSInserterThread(){}
 
@@ -1003,7 +1003,7 @@ public:
   uintptr_t _start;
   uintptr_t _range;
   RunnerGI_BD_InserterThread(Semaphore* post) : CHTTestThread(0, 0, NULL, post) {
-    _cht = new TestTable(GI_BD_GI_BD_START_SIZE, GI_BD_END_SIZE, 2);
+    _cht = new TestTable(GlobalCounter::DefaultScope, GI_BD_GI_BD_START_SIZE, GI_BD_END_SIZE, 2);
   };
   virtual ~RunnerGI_BD_InserterThread(){}
 
@@ -1101,7 +1101,7 @@ public:
 
   void main_run() {
     Semaphore done(0);
-    TestTable* cht = new TestTable(16, 16, 2);
+    TestTable* cht = new TestTable(GlobalCounter::DefaultScope, 16, 16, 2);
     for (uintptr_t v = 1; v < 99999; v++ ) {
       TestLookup tl(v);
       EXPECT_TRUE(cht->insert(this, tl, v)) << "Inserting an unique value should work.";
