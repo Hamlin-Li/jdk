@@ -113,11 +113,6 @@ void G1DirtyCardQueueSet::handle_zero_index(G1DirtyCardQueue& queue) {
   }
 }
 
-void G1DirtyCardQueueSet::handle_zero_index_for_thread(Thread* t) {
-  G1DirtyCardQueue& queue = G1ThreadLocalData::dirty_card_queue(t);
-  G1BarrierSet::dirty_card_queue_set().handle_zero_index(queue);
-}
-
 void G1DirtyCardQueueSet::enqueue_completed_buffer(BufferNode* cbn) {
   assert(cbn != NULL, "precondition");
   // Increment _num_cards before adding to queue, so queue removal doesn't

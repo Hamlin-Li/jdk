@@ -250,8 +250,6 @@ public:
   // mutator threads to do card-processing work.
   static uint num_par_ids();
 
-  static void handle_zero_index_for_thread(Thread* t);
-
   virtual void enqueue_completed_buffer(BufferNode* node);
 
   // Upper bound on the number of cards currently in in this queue set.
