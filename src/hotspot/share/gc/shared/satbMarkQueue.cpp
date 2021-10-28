@@ -283,7 +283,7 @@ void SATBMarkQueueSet::enqueue_completed_buffer(BufferNode* node) {
 BufferNode* SATBMarkQueueSet::get_completed_buffer() {
   BufferNode* node;
   {
-    GlobalCounter::CriticalSection cs(Thread::current(), GlobalCounter::global_counter(GlobalCounter::PtrQueueScope));
+    GlobalCounter::CriticalSection cs(Thread::current(), GlobalCounter::global_counter(GlobalCounter::SATBScope));
     node = _list.pop();
   }
   if (node != NULL) {

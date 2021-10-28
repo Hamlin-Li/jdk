@@ -182,6 +182,7 @@ class BufferNode::Allocator {
   Type Name; DEFINE_PAD_MINUS_SIZE(Id, DEFAULT_CACHE_LINE_SIZE, sizeof(Type))
 
   const size_t _buffer_size;
+  const GlobalCounter::GlobalCounterScope _scope;
   char _name[DEFAULT_CACHE_LINE_SIZE - sizeof(size_t)]; // Use name as padding.
   DECLARE_PADDED_MEMBER(1, Stack, _pending_list);
   DECLARE_PADDED_MEMBER(2, Stack, _free_list);
@@ -197,7 +198,7 @@ class BufferNode::Allocator {
   NONCOPYABLE(Allocator);
 
 public:
-  Allocator(const char* name, size_t buffer_size);
+  Allocator(const char* name, size_t buffer_size, GlobalCounter::GlobalCounterScope scope = GlobalCounter::DefaultScope);
   ~Allocator();
 
   const char* name() const { return _name; }

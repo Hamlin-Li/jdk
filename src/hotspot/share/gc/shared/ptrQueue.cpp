@@ -56,8 +56,9 @@ void BufferNode::deallocate(BufferNode* node) {
   FREE_C_HEAP_ARRAY(char, node);
 }
 
-BufferNode::Allocator::Allocator(const char* name, size_t buffer_size) :
+BufferNode::Allocator::Allocator(const char* name, size_t buffer_size, GlobalCounter::GlobalCounterScope scope) :
   _buffer_size(buffer_size),
+  _scope(scope),
   _pending_list(),
   _free_list(),
   _pending_count(0),
@@ -90,7 +91,7 @@ BufferNode* BufferNode::Allocator::allocate() {
   BufferNode* node;
   {
     // Protect against ABA; see release().
-    GlobalCounter::CriticalSection cs(Thread::current(), GlobalCounter::global_counter(GlobalCounter::PtrQueueScope));
+    GlobalCounter::CriticalSection cs(Thread::current(), GlobalCounter::global_counter(_scope));
     node = _free_list.pop();
   }
   if (node == NULL) {
@@ -164,7 +165,7 @@ bool BufferNode::Allocator::try_transfer_pending() {
     Atomic::sub(&_pending_count, count);
 
     // Wait for any in-progress pops, to avoid ABA for them.
-    GlobalCounter::global_counter(GlobalCounter::PtrQueueScope)->write_synchronize();
+    GlobalCounter::global_counter(_scope)->write_synchronize();
 
     // Add synchronized nodes to _free_list.
     // Update count first so no underflow in allocate().

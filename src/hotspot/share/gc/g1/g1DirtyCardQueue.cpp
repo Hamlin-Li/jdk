@@ -146,7 +146,7 @@ BufferNode* G1DirtyCardQueueSet::dequeue_completed_buffer() {
     // because we're not guaranteed to make progress. Lingering in
     // one CS could defer releasing buffer to the free list for reuse,
     // leading to excessive allocations.
-    GlobalCounter::CriticalSection cs(current_thread, GlobalCounter::global_counter(GlobalCounter::PtrQueueScope));
+    GlobalCounter::CriticalSection cs(current_thread, GlobalCounter::global_counter(GlobalCounter::DirtyCardScope));
     if (_completed.try_pop(&result)) return result;
   }
 }
@@ -244,7 +244,7 @@ G1DirtyCardQueueSet::HeadTail G1DirtyCardQueueSet::PausedBuffers::take_previous(
   {
     // Deal with plist in a critical section, to prevent it from being
     // deleted out from under us by a concurrent take_previous().
-    GlobalCounter::CriticalSection cs(Thread::current(), GlobalCounter::global_counter(GlobalCounter::PtrQueueScope));
+    GlobalCounter::CriticalSection cs(Thread::current(), GlobalCounter::global_counter(GlobalCounter::DirtyCardScope));
     previous = Atomic::load_acquire(&_plist);
     if ((previous == NULL) ||   // Nothing to take.
         previous->is_next() ||  // Not from a previous safepoint.
@@ -258,7 +258,7 @@ G1DirtyCardQueueSet::HeadTail G1DirtyCardQueueSet::PausedBuffers::take_previous(
   // There might be other threads examining previous (in concurrent
   // take_previous()).  Synchronize to wait until any such threads are
   // done with such examination before deleting.
-  GlobalCounter::global_counter(GlobalCounter::PtrQueueScope)->write_synchronize();
+  GlobalCounter::global_counter(GlobalCounter::DirtyCardScope)->write_synchronize();
   delete previous;
   return result;
 }

@@ -55,7 +55,9 @@ class GlobalCounter {
     SymbolTableScope,
     // Other scopes
     StringDedupScope,
-    PtrQueueScope,
+    // PtrQueue scopes
+    DirtyCardScope,
+    SATBScope,
     CardSetScope,
     // Scope number
     GlobalCounterScopeCount
