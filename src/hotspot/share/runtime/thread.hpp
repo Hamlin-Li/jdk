@@ -252,9 +252,15 @@ class Thread: public ThreadShadow {
   // Support for GlobalCounter
  private:
   volatile uintx _rcu_counter[GlobalCounter::GlobalCounterScopeCount];
+  struct PaddedCounter {
+    DEFINE_PAD_MINUS_SIZE(0, DEFAULT_CACHE_LINE_SIZE, 0);
+    volatile uintx _counter;
+    DEFINE_PAD_MINUS_SIZE(1, DEFAULT_CACHE_LINE_SIZE, sizeof(volatile uintx));
+  };
+  PaddedCounter _rcu_counters[GlobalCounter::GlobalCounterScopeCount];
  public:
   volatile uintx* get_rcu_counter(GlobalCounter::GlobalCounterScope scope) {
-    return &_rcu_counter[scope];
+    return &_rcu_counters[scope]._counter;
   }
 
  public:
