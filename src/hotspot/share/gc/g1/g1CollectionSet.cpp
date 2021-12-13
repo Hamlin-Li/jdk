@@ -138,10 +138,6 @@ void G1CollectionSet::add_old_region(HeapRegion* hr) {
   _old_region_length++;
 
   _g1h->old_set_remove(hr);
-
-  // Clear prev bitmap to enable use of it for evacuation failures.
-  MemRegion mr(hr->bottom(), hr->end());
-  _g1h->concurrent_mark()->clear_range_in_prev_bitmap(mr);
 }
 
 void G1CollectionSet::add_optional_region(HeapRegion* hr) {
@@ -480,6 +476,44 @@ void G1CollectionSet::finalize_old_part(double time_remaining_ms) {
   QuickSort::sort(_collection_set_regions, _collection_set_cur_length, compare_region_idx, true);
 }
 
+class G1ClearRangeInBitmapTask : public WorkerTask {
+  G1CollectionSetCandidates* _candidates;
+  uint _num_old_candidate_regions;
+  uint _num_workers;
+  HeapRegionClaimer _claimer;
+  G1CollectedHeap* _g1h;
+
+public:
+  G1ClearRangeInBitmapTask(G1CollectionSetCandidates* candidates,
+                           uint num_old_candidate_regions,
+                           uint num_workers) :
+     WorkerTask("Clear Range in Bitmap"),
+     _candidates(candidates),
+     _num_old_candidate_regions(num_old_candidate_regions),
+     _num_workers(num_workers),
+     _claimer(num_workers),
+     _g1h(G1CollectedHeap::heap())
+  { }
+
+  void work(uint worker_id) {
+    uint candidate_idx = _candidates->cur_idx();
+    uint offset = worker_id * _num_old_candidate_regions / _num_workers;
+    uint i = offset;
+    while (true) {
+      HeapRegion* r = _candidates->at(candidate_idx + i);
+      if (_claimer.claim_region(r->hrm_index())) {
+        // Clear prev bitmap to enable use of it for evacuation failures.
+        MemRegion mr(r->bottom(), r->end());
+        _g1h->concurrent_mark()->clear_range_in_prev_bitmap(mr); // TODO: need par clear?
+      }
+      if (++i == _num_old_candidate_regions) {
+        i = 0;
+      }
+      if (i == offset) break;
+    }
+  }
+};
+
 void G1CollectionSet::move_candidates_to_collection_set(uint num_old_candidate_regions) {
   if (num_old_candidate_regions == 0) {
     return;
@@ -492,6 +526,10 @@ void G1CollectionSet::move_candidates_to_collection_set(uint num_old_candidate_r
     _g1h->clear_region_attr(r);
     add_old_region(r);
   }
+
+  G1ClearRangeInBitmapTask task(candidates(), num_old_candidate_regions, _g1h->workers()->active_workers());
+  _g1h->workers()->run_task(&task);
+
   candidates()->remove(num_old_candidate_regions);
 
   candidates()->verify();
