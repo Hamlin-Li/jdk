@@ -33,11 +33,13 @@
 G1EvacFailureRegions::G1EvacFailureRegions() :
   _regions_failed_evacuation(mtGC),
   _evac_failure_regions(nullptr),
+  _live_words_in_evac_failure_regions(nullptr),
   _evac_failure_regions_cur_length(0),
   _max_regions(0) { }
 
 G1EvacFailureRegions::~G1EvacFailureRegions() {
   assert(_evac_failure_regions == nullptr, "not cleaned up");
+  assert(_live_words_in_evac_failure_regions == nullptr, "not cleaned up");
 }
 
 void G1EvacFailureRegions::pre_collection(uint max_regions) {
@@ -45,12 +47,16 @@ void G1EvacFailureRegions::pre_collection(uint max_regions) {
   _max_regions = max_regions;
   _regions_failed_evacuation.resize(_max_regions);
   _evac_failure_regions = NEW_C_HEAP_ARRAY(uint, _max_regions, mtGC);
+  _live_words_in_evac_failure_regions = NEW_C_HEAP_ARRAY(uint, _max_regions, mtGC);
+  memset(_live_words_in_evac_failure_regions, 0, sizeof(uint) * _max_regions);
 }
 
 void G1EvacFailureRegions::post_collection() {
   _regions_failed_evacuation.resize(0);
   FREE_C_HEAP_ARRAY(uint, _evac_failure_regions);
   _evac_failure_regions = nullptr;
+  FREE_C_HEAP_ARRAY(uint, _live_words_in_evac_failure_regions);
+  _live_words_in_evac_failure_regions = nullptr;
   _max_regions = 0; // To have any record() attempt fail in the future.
 }
 

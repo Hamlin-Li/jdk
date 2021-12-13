@@ -622,7 +622,7 @@ oop G1ParScanThreadState::handle_evacuation_failure_par(oop old, markWord m, siz
     // later use it to handle all failed objects.
     _g1h->mark_evac_failure_object(old, _worker_id);
 
-    if (_evac_failure_regions->record(r->hrm_index())) {
+    if (_evac_failure_regions->record(r->hrm_index(), word_sz)) {
       _g1h->hr_printer()->evac_failure(r);
     }
 

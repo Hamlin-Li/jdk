@@ -29,10 +29,11 @@
 #include "runtime/atomic.hpp"
 #include "utilities/bitMap.inline.hpp"
 
-bool G1EvacFailureRegions::record(uint region_idx) {
+bool G1EvacFailureRegions::record(uint region_idx, size_t word_sz) {
   assert(region_idx < _max_regions, "must be");
   bool success = _regions_failed_evacuation.par_set_bit(region_idx,
                                                         memory_order_relaxed);
+  Atomic::add(&_live_words_in_evac_failure_regions[region_idx], static_cast<uint>(word_sz));
   if (success) {
     size_t offset = Atomic::fetch_and_add(&_evac_failure_regions_cur_length, 1u);
     _evac_failure_regions[offset] = region_idx;

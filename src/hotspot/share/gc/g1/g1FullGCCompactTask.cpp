@@ -87,7 +87,7 @@ void G1FullGCCompactTask::compact_region(HeapRegion* hr) {
     // Clear the liveness information for this region. This is needed
     // for bitmap verification as well as for being able to use the
     // prev_bitmap for evacuation failures.
-    collector()->mark_bitmap()->clear_region(hr);
+    collector()->mark_bitmap()->clear_region(hr); // to be optimized
   }
 
   hr->reset_compacted_after_full_gc();

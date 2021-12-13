@@ -39,6 +39,8 @@ class G1EvacFailureRegions {
   CHeapBitMap _regions_failed_evacuation;
   // Regions (index) of evacuation failed in the current collection.
   uint* _evac_failure_regions;
+  // Live bytes in evacuation failed regions
+  uint* _live_words_in_evac_failure_regions;
   // Number of regions evacuation failed in the current collection.
   volatile uint _evac_failure_regions_cur_length;
   // Maximum of regions number.
@@ -62,6 +64,10 @@ public:
     return Atomic::load(&_evac_failure_regions_cur_length);
   }
 
+  size_t live_bytes_in_region(uint region_idx) const {
+    return Atomic::load(&_live_words_in_evac_failure_regions[region_idx]) * BytesPerWord;
+  }
+
   bool evacuation_failed() const {
     return num_regions_failed_evacuation() > 0;
   }
@@ -69,7 +75,7 @@ public:
   // Record that the garbage collection encountered an evacuation failure in the
   // given region. Returns whether this has been the first occurrence of an evacuation
   // failure in that region.
-  inline bool record(uint region_idx);
+  inline bool record(uint region_idx, size_t word_sz);
 };
 
 #endif //SHARE_GC_G1_G1EVACFAILUREREGIONS_HPP

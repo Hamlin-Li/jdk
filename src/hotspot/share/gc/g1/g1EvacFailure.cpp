@@ -140,6 +140,36 @@ public:
   }
 };
 
+class RemoveSelfForwardPtrHRClosure_2 : public HeapRegionClosure {
+  G1CollectedHeap* _g1h;
+  uint _worker_id;
+
+  void remove_self_forward_ptr_by_walking_hr(HeapRegion* hr,
+                                               bool during_concurrent_start) {
+    RemoveSelfForwardPtrObjClosure rspc(hr,
+                                        during_concurrent_start,
+                                        _worker_id);
+
+    // All objects that failed evacuation has been marked in the prev bitmap.
+    // Use the bitmap to apply the above closure to all failing objects.
+    hr->apply_to_marked_objects(const_cast<G1CMBitMap*>(_g1h->concurrent_mark()->prev_mark_bitmap()), &rspc);
+    // Need to zap the remainder area of the processed region.
+    rspc.zap_remainder();
+  }
+
+public:
+  RemoveSelfForwardPtrHRClosure_2(uint worker_id) :
+    _g1h(G1CollectedHeap::heap()),
+    _worker_id(worker_id) {
+  }
+
+  bool do_heap_region(HeapRegion *hr) {
+    bool during_concurrent_start = _g1h->collector_state()->in_concurrent_start_gc();
+    remove_self_forward_ptr_by_walking_hr(hr, during_concurrent_start);
+    return false;
+  }
+};
+
 class RemoveSelfForwardPtrHRClosure: public HeapRegionClosure {
   G1CollectedHeap* _g1h;
   uint _worker_id;
@@ -152,21 +182,6 @@ public:
     _g1h(G1CollectedHeap::heap()),
     _worker_id(worker_id),
     _evac_failure_regions(evac_failure_regions) {
-  }
-
-  size_t remove_self_forward_ptr_by_walking_hr(HeapRegion* hr,
-                                               bool during_concurrent_start) {
-    RemoveSelfForwardPtrObjClosure rspc(hr,
-                                        during_concurrent_start,
-                                        _worker_id);
-
-    // All objects that failed evacuation has been marked in the prev bitmap.
-    // Use the bitmap to apply the above closure to all failing objects.
-    hr->apply_to_marked_objects(const_cast<G1CMBitMap*>(_g1h->concurrent_mark()->prev_mark_bitmap()), &rspc);
-    // Need to zap the remainder area of the processed region.
-    rspc.zap_remainder();
-
-    return rspc.marked_bytes();
   }
 
   bool do_heap_region(HeapRegion *hr) {
@@ -184,7 +199,7 @@ public:
 
       hr->reset_bot();
 
-      size_t live_bytes = remove_self_forward_ptr_by_walking_hr(hr, during_concurrent_start);
+      size_t live_bytes = _evac_failure_regions->live_bytes_in_region(hr->hrm_index());
 
       hr->rem_set()->clean_strong_code_roots(hr);
       hr->rem_set()->clear_locked(true);
@@ -200,6 +215,7 @@ G1ParRemoveSelfForwardPtrsTask::G1ParRemoveSelfForwardPtrsTask(G1EvacFailureRegi
   WorkerTask("G1 Remove Self-forwarding Pointers"),
   _g1h(G1CollectedHeap::heap()),
   _hrclaimer(_g1h->workers()->active_workers()),
+  _hrclaimer_2(_g1h->workers()->active_workers()),
   _evac_failure_regions(evac_failure_regions) { }
 
 void G1ParRemoveSelfForwardPtrsTask::work(uint worker_id) {
@@ -207,6 +223,9 @@ void G1ParRemoveSelfForwardPtrsTask::work(uint worker_id) {
 
   // Iterate through all regions that failed evacuation during the entire collection.
   _evac_failure_regions->par_iterate(&rsfp_cl, &_hrclaimer, worker_id);
+
+  RemoveSelfForwardPtrHRClosure_2 rsfp_cl_2(worker_id);
+  _evac_failure_regions->par_iterate(&rsfp_cl_2, &_hrclaimer_2, worker_id);
 }
 
 uint G1ParRemoveSelfForwardPtrsTask::num_failed_regions() const {
