@@ -165,6 +165,7 @@ void G1GCPhaseTimes::reset() {
   _cur_optional_merge_heap_roots_time_ms = 0.0;
   _cur_prepare_merge_heap_roots_time_ms = 0.0;
   _cur_optional_prepare_merge_heap_roots_time_ms = 0.0;
+  _cur_calc_cset_time_ms = 0.0;
   _cur_prepare_tlab_time_ms = 0.0;
   _cur_resize_tlab_time_ms = 0.0;
   _cur_post_evacuate_cleanup_1_time_ms = 0.0;
@@ -380,6 +381,7 @@ double G1GCPhaseTimes::print_pre_evacuate_collection_set() const {
                                          average_time_ms(NoteStartOfMark);
 
   const double sum_ms = _root_region_scan_wait_time_ms +
+                        _cur_calc_cset_time_ms +
                         _cur_prepare_tlab_time_ms +
                         _cur_concatenate_dirty_card_logs_time_ms +
                         _recorded_young_cset_choice_time_ms +
@@ -393,6 +395,8 @@ double G1GCPhaseTimes::print_pre_evacuate_collection_set() const {
   if (_root_region_scan_wait_time_ms > 0.0) {
     debug_time("Root Region Scan Waiting", _root_region_scan_wait_time_ms);
   }
+
+  debug_time("Calc CSet", _cur_calc_cset_time_ms);
   debug_time("Prepare TLABs", _cur_prepare_tlab_time_ms);
   debug_time("Concatenate Dirty Card Logs", _cur_concatenate_dirty_card_logs_time_ms);
   debug_time("Choose Collection Set", (_recorded_young_cset_choice_time_ms + _recorded_non_young_cset_choice_time_ms));

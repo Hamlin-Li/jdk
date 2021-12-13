@@ -1114,7 +1114,11 @@ void G1YoungCollector::collect() {
     // other trivial setup above).
     policy()->record_young_collection_start();
 
-    calculate_collection_set(jtm.evacuation_info(), _target_pause_time_ms);
+    {
+      Ticks start = Ticks::now();
+      calculate_collection_set(jtm.evacuation_info(), _target_pause_time_ms);
+      phase_times()->record_calc_cset_time_ms((Ticks::now() - start).seconds() * 1000.0);
+    }
 
     G1RedirtyCardsQueueSet rdcqs(G1BarrierSet::dirty_card_queue_set().allocator());
     G1PreservedMarksSet preserved_marks_set(workers()->active_workers());

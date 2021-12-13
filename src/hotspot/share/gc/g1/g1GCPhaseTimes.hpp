@@ -166,6 +166,7 @@ class G1GCPhaseTimes : public CHeapObj<mtGC> {
   double _cur_prepare_merge_heap_roots_time_ms;
   double _cur_optional_prepare_merge_heap_roots_time_ms;
 
+  double _cur_calc_cset_time_ms;
   double _cur_prepare_tlab_time_ms;
   double _cur_resize_tlab_time_ms;
 
@@ -258,6 +259,10 @@ class G1GCPhaseTimes : public CHeapObj<mtGC> {
   double average_time_ms(GCParPhases phase) const;
 
   size_t sum_thread_work_items(GCParPhases phase, uint index = 0);
+
+  void record_calc_cset_time_ms(double ms) {
+    _cur_calc_cset_time_ms = ms;
+  }
 
   void record_prepare_tlab_time_ms(double ms) {
     _cur_prepare_tlab_time_ms = ms;
