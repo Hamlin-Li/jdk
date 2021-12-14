@@ -109,7 +109,7 @@ public:
 
   double worker_cost() const override {
     assert(_evac_failure_regions->evacuation_failed(), "Should not call this if not executed");
-    return _evac_failure_regions->num_regions_failed_evacuation();
+    return _evac_failure_regions->num_regions_failed_evacuation() * 5;
   }
 
   void do_work(uint worker_id) override {
