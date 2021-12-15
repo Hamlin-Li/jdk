@@ -271,9 +271,9 @@
           range(0, NOT_LP64(32*M) LP64_ONLY(512*M))                         \
           constraint(G1HeapRegionSizeConstraintFunc,AfterMemoryInit)        \
                                                                             \
-  product(uint, G1HeapRegionChunkNum, 8,                                    \
-          "Size of the G1 region chunks.")                                  \
-          range(1, 128)                                                     \
+  product(uint, G1HeapRegionChunkNum, 256,                                  \
+          "G1 chunk num per region.")                                       \
+          range(1, 1024)                                                    \
                                                                             \
   product(uint, G1ConcRefinementThreads, 0,                                 \
           "The number of parallel remembered set update threads. "          \

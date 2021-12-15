@@ -107,6 +107,10 @@ class G1ParScanThreadState : public CHeapObj<mtGC> {
   EvacuationFailedInfo _evacuation_failed_info;
   G1EvacFailureRegions* _evac_failure_regions;
 
+  G1RegionMarkStatsCache _evac_failure_mark_stats_cache;
+
+
+  void flush_evac_failure_mark_stats_cache() { _evac_failure_mark_stats_cache.evict_all(); }
   bool inject_evacuation_failure(uint region_idx) EVAC_FAILURE_INJECTOR_RETURN_( return false; );
 
 public:
@@ -117,7 +121,8 @@ public:
                        uint n_workers,
                        size_t young_cset_length,
                        size_t optional_cset_length,
-                       G1EvacFailureRegions* evac_failure_regions);
+                       G1EvacFailureRegions* evac_failure_regions,
+                       G1RegionMarkStats* evac_failure_mark_stats);
   virtual ~G1ParScanThreadState();
 
   void set_ref_discoverer(ReferenceDiscoverer* rd) { _scanner.set_ref_discoverer(rd); }
@@ -236,6 +241,7 @@ class G1ParScanThreadStateSet : public StackObj {
   uint _n_workers;
   bool _flushed;
   G1EvacFailureRegions* _evac_failure_regions;
+  G1RegionMarkStats* _evac_failure_live_stats;
 
  public:
   G1ParScanThreadStateSet(G1CollectedHeap* g1h,

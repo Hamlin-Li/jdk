@@ -41,14 +41,15 @@ class G1EvacFailureRegions {
   CHeapBitMap _regions_failed_evacuation;
   // Regions (index) of evacuation failed in the current collection.
   uint* _evac_failure_regions;
-  // Live bytes in evacuation failed regions
-  uint* _live_words_in_evac_failure_regions;
   // TODO:
   G1HeapRegionChunkClaimer** _chunk_claimers;
   // Number of regions evacuation failed in the current collection.
   volatile uint _evac_failure_regions_cur_length;
   // Maximum of regions number.
   uint _max_regions;
+
+  // Live bytes in evacuation failed regions
+  G1RegionMarkStats* _live_stats;
 
 public:
   G1EvacFailureRegions();
@@ -65,7 +66,6 @@ public:
                    uint worker_id) const;
 
   void par_iterate_chunks(G1HeapRegionChunkClosure* chunk_closure,
-                          HeapRegionClaimer* _hrclaimer,
                           uint worker_id) const;
 
   uint num_regions_failed_evacuation() const {
@@ -73,7 +73,11 @@ public:
   }
 
   size_t live_bytes_in_region(uint region_idx) const {
-    return Atomic::load(&_live_words_in_evac_failure_regions[region_idx]) * BytesPerWord;
+    return _live_stats[region_idx]._live_words * BytesPerWord;
+  }
+
+  G1RegionMarkStats* live_stats() const {
+    return _live_stats;
   }
 
   bool evacuation_failed() const {
@@ -83,7 +87,7 @@ public:
   // Record that the garbage collection encountered an evacuation failure in the
   // given region. Returns whether this has been the first occurrence of an evacuation
   // failure in that region.
-  inline bool record(uint region_idx, size_t word_sz);
+  inline bool record(uint region_idx, size_t word_sz, G1RegionMarkStatsCache* _mark_stats_cache);
 };
 
 #endif //SHARE_GC_G1_G1EVACFAILUREREGIONS_HPP

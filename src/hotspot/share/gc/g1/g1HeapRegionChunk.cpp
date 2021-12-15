@@ -26,7 +26,6 @@
 
 #include "gc/g1/g1CollectedHeap.inline.hpp"
 #include "gc/g1/g1ConcurrentMarkBitMap.inline.hpp"
-#include "gc/g1/g1GCParPhaseTimesTracker.hpp"
 #include "gc/g1/g1HeapRegionChunk.hpp"
 #include "gc/g1/heapRegion.hpp"
 
@@ -42,7 +41,7 @@ G1HeapRegionChunk::G1HeapRegionChunk(HeapRegion* region, uint chunk_idx, uint ch
   _limit = MIN2(top, bottom + (_chunk_idx + 1) * _chunk_size);
   _first_obj_in_chunk = _bitmap->get_next_marked_addr(_start, _limit);
   _next_obj_in_region = _bitmap->get_next_marked_addr(_limit, top);
-  // there is marked obj in this chunk
+  // There is marked obj in this chunk
   bool marked_obj_in_this_chunk = _start <= _first_obj_in_chunk && _first_obj_in_chunk < _limit;
   _include_first_obj_in_region = marked_obj_in_this_chunk
                                  && _bitmap->get_next_marked_addr(bottom, _limit) >= _start;
@@ -76,29 +75,14 @@ bool G1ScanChunksInHeapRegionClosure::do_heap_region(HeapRegion* r) {
   uint total_workers = G1CollectedHeap::heap()->workers()->active_workers();
   const uint start_pos = _worker_id * claimer->chunk_num() / total_workers;
   uint chunk_idx = start_pos;
-  G1GCPhaseTimes* phase_time = G1CollectedHeap::heap()->phase_times();
-  phase_time->record_or_add_thread_work_item(G1GCPhaseTimes::RemoveSelfForwardingPtr,
-                                             _worker_id,
-                                             1,
-                                             G1GCPhaseTimes::RemoveSelfForwardingPtrRegions);
   while (true) {
     if (claimer->claim_chunk(chunk_idx)) {
-      phase_time->record_or_add_thread_work_item(G1GCPhaseTimes::RemoveSelfForwardingPtr,
-                                                 _worker_id,
-                                                 1,
-                                                 G1GCPhaseTimes::RemoveSelfForwardingPtrChunks);
 
       G1HeapRegionChunk chunk(r, chunk_idx, claimer->chunk_size(), _bitmap);
       if (chunk.empty()) {
         continue;
       }
-      {
-        G1GCParPhaseTimesTracker tracker(G1CollectedHeap::heap()->phase_times(),
-                                         G1GCPhaseTimes::RemoveSelfForwardingPtr_2,
-                                         _worker_id,
-                                         true);
-        _closure->do_heap_region_chunk(&chunk);
-      }
+      _closure->do_heap_region_chunk(&chunk);
     }
     if (++chunk_idx == claimer->chunk_num()) {
       chunk_idx = 0;

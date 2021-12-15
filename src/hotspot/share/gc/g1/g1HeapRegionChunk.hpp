@@ -80,7 +80,7 @@ public:
 class G1HeapRegionChunkClosure {
 public:
   // Typically called on each region until it returns true.
-  virtual bool do_heap_region_chunk(G1HeapRegionChunk* c) = 0;
+  virtual void do_heap_region_chunk(G1HeapRegionChunk* c) = 0;
 };
 
 class G1HeapRegionChunkClaimer {

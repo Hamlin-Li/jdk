@@ -39,7 +39,6 @@ class G1ParRemoveSelfForwardPtrsTask: public WorkerTask {
 protected:
   G1CollectedHeap* _g1h;
   HeapRegionClaimer _hrclaimer;
-  HeapRegionClaimer _hrclaimer_2;
 
   G1EvacFailureRegions* _evac_failure_regions;
   uint volatile _num_failed_regions;

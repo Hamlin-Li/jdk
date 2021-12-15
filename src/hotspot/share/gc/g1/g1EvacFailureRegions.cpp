@@ -26,7 +26,6 @@
 
 #include "gc/g1/g1CollectedHeap.inline.hpp"
 #include "gc/g1/g1EvacFailureRegions.inline.hpp"
-#include "gc/g1/g1GCParPhaseTimesTracker.hpp"
 #include "gc/g1/g1HeapRegionChunk.hpp"
 #include "gc/g1/heapRegion.hpp"
 #include "memory/allocation.hpp"
@@ -35,15 +34,21 @@
 G1EvacFailureRegions::G1EvacFailureRegions() :
   _regions_failed_evacuation(mtGC),
   _evac_failure_regions(nullptr),
-  _live_words_in_evac_failure_regions(nullptr),
   _chunk_claimers(nullptr),
   _evac_failure_regions_cur_length(0),
-  _max_regions(0) { }
+  _max_regions(0),
+  _live_stats(nullptr) {
+  _live_stats = NEW_C_HEAP_ARRAY(G1RegionMarkStats, G1CollectedHeap::heap()->max_regions(), mtGC);
+  for (uint j = 0; j < G1CollectedHeap::heap()->max_regions(); j++) {
+    _live_stats[j].clear();
+  }
+}
 
 G1EvacFailureRegions::~G1EvacFailureRegions() {
   assert(_evac_failure_regions == nullptr, "not cleaned up");
-  assert(_live_words_in_evac_failure_regions == nullptr, "not cleaned up");
   assert(_chunk_claimers == nullptr, "not cleaned up");
+  FREE_C_HEAP_ARRAY(uint, _live_stats);
+  _live_stats = nullptr;
 }
 
 void G1EvacFailureRegions::pre_collection(uint max_regions) {
@@ -51,9 +56,7 @@ void G1EvacFailureRegions::pre_collection(uint max_regions) {
   _max_regions = max_regions;
   _regions_failed_evacuation.resize(_max_regions);
   _evac_failure_regions = NEW_C_HEAP_ARRAY(uint, _max_regions, mtGC);
-  _live_words_in_evac_failure_regions = NEW_C_HEAP_ARRAY(uint, _max_regions, mtGC);
   _chunk_claimers = NEW_C_HEAP_ARRAY(G1HeapRegionChunkClaimer*, _max_regions, mtGC);
-  memset(_live_words_in_evac_failure_regions, 0, sizeof(uint) * _max_regions);
 }
 
 void G1EvacFailureRegions::post_collection() {
@@ -67,8 +70,6 @@ void G1EvacFailureRegions::post_collection() {
 
   FREE_C_HEAP_ARRAY(uint, _evac_failure_regions);
   _evac_failure_regions = nullptr;
-  FREE_C_HEAP_ARRAY(uint, _live_words_in_evac_failure_regions);
-  _live_words_in_evac_failure_regions = nullptr;
   _max_regions = 0; // To have any record() attempt fail in the future.
 }
 
@@ -83,16 +84,11 @@ void G1EvacFailureRegions::par_iterate(HeapRegionClosure* closure,
 }
 
 void G1EvacFailureRegions::par_iterate_chunks(G1HeapRegionChunkClosure* chunk_closure,
-                                              HeapRegionClaimer* _hrclaimer,
                                               uint worker_id) const {
-  G1GCParPhaseTimesTracker tracker(G1CollectedHeap::heap()->phase_times(),
-                                   G1GCPhaseTimes::RemoveSelfForwardingPtr_1,
-                                   worker_id,
-                                   true);
   G1ScanChunksInHeapRegionClosure closure(_chunk_claimers, chunk_closure, worker_id);
 
   G1CollectedHeap::heap()->par_iterate_regions_array(&closure,
-                                                     nullptr,
+                                                     nullptr, // pass null, so every worker thread go through every region.
                                                      _evac_failure_regions,
                                                      Atomic::load(&_evac_failure_regions_cur_length),
                                                      worker_id);

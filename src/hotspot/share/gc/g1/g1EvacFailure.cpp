@@ -178,10 +178,9 @@ public:
     _worker_id(worker_id) {
   }
 
-  bool do_heap_region_chunk(G1HeapRegionChunk* chunk) override {
+  void do_heap_region_chunk(G1HeapRegionChunk* chunk) override {
     bool during_concurrent_start = _g1h->collector_state()->in_concurrent_start_gc();
     remove_self_forward_ptr_by_walking_hr(chunk, during_concurrent_start);
-    return false;
   }
 };
 
@@ -230,7 +229,6 @@ G1ParRemoveSelfForwardPtrsTask::G1ParRemoveSelfForwardPtrsTask(G1EvacFailureRegi
   WorkerTask("G1 Remove Self-forwarding Pointers"),
   _g1h(G1CollectedHeap::heap()),
   _hrclaimer(_g1h->workers()->active_workers()),
-  _hrclaimer_2(_g1h->workers()->active_workers()),
   _evac_failure_regions(evac_failure_regions) { }
 
 void G1ParRemoveSelfForwardPtrsTask::work(uint worker_id) {
@@ -238,9 +236,10 @@ void G1ParRemoveSelfForwardPtrsTask::work(uint worker_id) {
   // Iterate through all regions that failed evacuation during the entire collection.
   _evac_failure_regions->par_iterate(&rsfp_cl, &_hrclaimer, worker_id);
 
+  // TODO: fix potential race
   RemoveSelfForwardPtrHRChunkClosure rsfp_cl_2(worker_id);
   // Iterate through all chunks in regions that failed evacuation during the entire collection.
-  _evac_failure_regions->par_iterate_chunks(&rsfp_cl_2, &_hrclaimer_2, worker_id);
+  _evac_failure_regions->par_iterate_chunks(&rsfp_cl_2, worker_id);
 }
 
 uint G1ParRemoveSelfForwardPtrsTask::num_failed_regions() const {
