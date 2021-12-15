@@ -30,7 +30,7 @@
 #include "gc/shared/markBitMap.inline.hpp"
 
 G1HeapRegionChunk::G1HeapRegionChunk(HeapRegion* region, uint chunk_idx, G1CMBitMap* bitmap) :
-  _chunk_size(MIN2(128 * K, G1HeapRegionSize)),
+  _chunk_size(static_cast<uint>(MIN2(128 * K, G1HeapRegionSize))),
   _region(region),
   _chunk_idx(chunk_idx),
   _bitmap(bitmap) {
@@ -49,8 +49,8 @@ G1HeapRegionChunk::G1HeapRegionChunk(HeapRegion* region, uint chunk_idx, G1CMBit
 }
 
 G1HeapRegionChunkClaimer::G1HeapRegionChunkClaimer(uint region_idx) :
-  _chunk_size(MIN2(128 * K, G1HeapRegionSize)),
-  _chunk_num(G1HeapRegionSize / _chunk_size),
+  _chunk_size(static_cast<uint>(MIN2(128 * K, G1HeapRegionSize))),
+  _chunk_num(static_cast<uint>(G1HeapRegionSize) / _chunk_size),
   _region_idx(region_idx),
   _chunks(mtGC) {
   _chunks.resize(_chunk_num);

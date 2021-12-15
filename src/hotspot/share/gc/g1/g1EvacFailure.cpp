@@ -104,7 +104,7 @@ public:
 
     HeapWord* obj_end = obj_addr + obj_size;
     _last_forwarded_object_end = obj_end;
-    _hr->alloc_block_in_bot(obj_addr, obj_end); // TODO: fix parallel
+    _hr->update_bot_at(obj_addr, obj_size, false);
     return obj_size;
   }
 
@@ -120,14 +120,15 @@ public:
     if (gap_size >= CollectedHeap::min_fill_size()) {
       CollectedHeap::fill_with_objects(start, gap_size);
 
+      size_t dummy_size = cast_to_oop(start)->size();
       HeapWord* end_first_obj = start + cast_to_oop(start)->size();
-      _hr->alloc_block_in_bot(start, end_first_obj); // TODO: fix parallel
+      _hr->update_bot_at(start, dummy_size, false);
       // Fill_with_objects() may have created multiple (i.e. two)
       // objects, as the max_fill_size() is half a region.
       // After updating the BOT for the first object, also update the
       // BOT for the second object to make the BOT complete.
       if (end_first_obj != end) {
-        _hr->alloc_block_in_bot(end_first_obj, end); // TODO: fix parallel
+        _hr->update_bot_at(end_first_obj, cast_to_oop(end_first_obj)->size(), false);
 #ifdef ASSERT
         size_t size_second_obj = cast_to_oop(end_first_obj)->size();
         HeapWord* end_of_second_obj = end_first_obj + size_second_obj;
@@ -143,14 +144,11 @@ public:
 
   void zap_remainder() {
     zap_dead_objects(_last_forwarded_object_end, _chunk->next_obj_in_region());
-    // TODO: fix parallel
-    /*
     if (_chunk->include_last_obj_in_region()) {
       // As we have process the self forwardee in parallel,
       // it's necessary to update the bot threshold explicitly.
       _hr->update_bot_threshold();
     }
-     */
   }
 };
 
