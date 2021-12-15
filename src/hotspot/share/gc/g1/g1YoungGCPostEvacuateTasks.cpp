@@ -105,11 +105,12 @@ public:
   RemoveSelfForwardPtrsTask(G1EvacFailureRegions* evac_failure_regions) :
     G1AbstractSubTask(G1GCPhaseTimes::RemoveSelfForwardingPtr),
     _task(evac_failure_regions),
-    _evac_failure_regions(evac_failure_regions) { }
+    _evac_failure_regions(evac_failure_regions) {
+  }
 
   double worker_cost() const override {
     assert(_evac_failure_regions->evacuation_failed(), "Should not call this if not executed");
-    return _evac_failure_regions->num_regions_failed_evacuation() * 5;
+    return _evac_failure_regions->num_regions_failed_evacuation() * G1EvacuationFailureALotWorkerCost;
   }
 
   void do_work(uint worker_id) override {

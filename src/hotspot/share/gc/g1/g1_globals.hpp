@@ -79,7 +79,12 @@
           "The percentage of regions in the collection set starting "       \
           "from the beginning where the forced evacuation failure "         \
           "injection will be applied.")                                     \
-          range(1, 100)
+          range(1, 100)                                                     \
+  product(uint, G1EvacuationFailureALotWorkerCost, 2,                       \
+          "The percentage of regions in the collection set starting "       \
+          "from the beginning where the forced evacuation failure "         \
+          "injection will be applied.")                                     \
+          range(1, 16)
 #else
 #define GC_G1_EVACUATION_FAILURE_FLAGS(develop,                             \
                                        develop_pd,                          \
@@ -265,6 +270,10 @@
           "Size of the G1 regions.")                                        \
           range(0, NOT_LP64(32*M) LP64_ONLY(512*M))                         \
           constraint(G1HeapRegionSizeConstraintFunc,AfterMemoryInit)        \
+                                                                            \
+  product(uint, G1HeapRegionChunkNum, 8,                                    \
+          "Size of the G1 region chunks.")                                  \
+          range(1, 128)                                                     \
                                                                             \
   product(uint, G1ConcRefinementThreads, 0,                                 \
           "The number of parallel remembered set update threads. "          \

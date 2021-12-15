@@ -103,6 +103,8 @@ G1GCPhaseTimes::G1GCPhaseTimes(STWGCTimer* gc_timer, uint max_gc_threads) :
   _gc_par_phases[Other] = new WorkerDataArray<double>("Other", "GC Worker Other (ms):", max_gc_threads);
   _gc_par_phases[MergePSS] = new WorkerDataArray<double>("MergePSS", "Merge Per-Thread State (ms):", max_gc_threads);
   _gc_par_phases[RemoveSelfForwardingPtr] = new WorkerDataArray<double>("RemoveSelfForwardingPtr", "Remove Self Forwards (ms):", max_gc_threads);
+  _gc_par_phases[RemoveSelfForwardingPtr_1] = new WorkerDataArray<double>("RemoveSelfForwardingPtr_1", "Remove Self Forwards 1 (ms):", max_gc_threads);
+  _gc_par_phases[RemoveSelfForwardingPtr_2] = new WorkerDataArray<double>("RemoveSelfForwardingPtr_2", "Remove Self Forwards 2 (ms):", max_gc_threads);
   _gc_par_phases[ClearCardTable] = new WorkerDataArray<double>("ClearLoggedCards", "Clear Logged Cards (ms):", max_gc_threads);
   _gc_par_phases[RecalculateUsed] = new WorkerDataArray<double>("RecalculateUsed", "Recalculate Used Memory (ms):", max_gc_threads);
   _gc_par_phases[ResetHotCardCache] = new WorkerDataArray<double>("ResetHotCardCache", "Reset Hot Card Cache (ms):", max_gc_threads);
@@ -131,6 +133,9 @@ G1GCPhaseTimes::G1GCPhaseTimes(STWGCTimer* gc_timer, uint max_gc_threads) :
   _gc_par_phases[MergePSS]->create_thread_work_items("Copied Bytes", MergePSSCopiedBytes);
   _gc_par_phases[MergePSS]->create_thread_work_items("LAB Waste", MergePSSLABWasteBytes);
   _gc_par_phases[MergePSS]->create_thread_work_items("LAB Undo Waste", MergePSSLABUndoWasteBytes);
+
+  _gc_par_phases[RemoveSelfForwardingPtr]->create_thread_work_items("Remove Self Forwards Regions", RemoveSelfForwardingPtrRegions);
+  _gc_par_phases[RemoveSelfForwardingPtr]->create_thread_work_items("Remove Self Forwards Chunks", RemoveSelfForwardingPtrChunks);
 
   _gc_par_phases[EagerlyReclaimHumongousObjects]->create_thread_work_items("Humongous Total", EagerlyReclaimNumTotal);
   _gc_par_phases[EagerlyReclaimHumongousObjects]->create_thread_work_items("Humongous Candidates", EagerlyReclaimNumCandidates);
@@ -485,6 +490,8 @@ double G1GCPhaseTimes::print_post_evacuate_collection_set(bool evacuation_failed
   debug_phase(_gc_par_phases[RecalculateUsed], 1);
   if (evacuation_failed) {
     debug_phase(_gc_par_phases[RemoveSelfForwardingPtr], 1);
+    debug_phase(_gc_par_phases[RemoveSelfForwardingPtr_1], 2);
+    debug_phase(_gc_par_phases[RemoveSelfForwardingPtr_2], 2);
   }
 
   trace_phase(_gc_par_phases[RedirtyCards]);

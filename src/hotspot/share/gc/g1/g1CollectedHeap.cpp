@@ -2335,7 +2335,7 @@ void G1CollectedHeap::par_iterate_regions_array(HeapRegionClosure* cl,
 
   do {
     uint region_idx = regions[cur_pos];
-    if (hr_claimer == NULL || hr_claimer->claim_region(region_idx)) {
+    if (hr_claimer == nullptr || hr_claimer->claim_region(region_idx)) {
       HeapRegion* r = region_at(region_idx);
       bool result = cl->do_heap_region(r);
       guarantee(!result, "Must not cancel iteration");

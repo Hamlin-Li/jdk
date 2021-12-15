@@ -24,16 +24,18 @@
 
 #include "precompiled.hpp"
 
+#include "gc/g1/g1CollectedHeap.inline.hpp"
+#include "gc/g1/g1ConcurrentMarkBitMap.inline.hpp"
+#include "gc/g1/g1GCParPhaseTimesTracker.hpp"
 #include "gc/g1/g1HeapRegionChunk.hpp"
-#include "gc/g1/g1ConcurrentMarkBitMap.hpp"
 #include "gc/g1/heapRegion.hpp"
-#include "gc/shared/markBitMap.inline.hpp"
 
-G1HeapRegionChunk::G1HeapRegionChunk(HeapRegion* region, uint chunk_idx, G1CMBitMap* bitmap) :
-  _chunk_size(static_cast<uint>(MIN2(128 * K, G1HeapRegionSize))),
+G1HeapRegionChunk::G1HeapRegionChunk(HeapRegion* region, uint chunk_idx, uint chunk_size, G1CMBitMap* bitmap) :
+  _chunk_size(chunk_size),
   _region(region),
   _chunk_idx(chunk_idx),
   _bitmap(bitmap) {
+
   HeapWord* top = _region->top();
   HeapWord* bottom = _region->bottom();
   _start = MIN2(top, bottom + _chunk_idx * _chunk_size);
@@ -49,8 +51,8 @@ G1HeapRegionChunk::G1HeapRegionChunk(HeapRegion* region, uint chunk_idx, G1CMBit
 }
 
 G1HeapRegionChunkClaimer::G1HeapRegionChunkClaimer(uint region_idx) :
-  _chunk_size(static_cast<uint>(MIN2(128 * K, G1HeapRegionSize))),
-  _chunk_num(static_cast<uint>(G1HeapRegionSize) / _chunk_size),
+  _chunk_num(G1HeapRegionChunkNum),
+  _chunk_size(static_cast<uint>(G1HeapRegionSize / _chunk_num)),
   _region_idx(region_idx),
   _chunks(mtGC) {
   _chunks.resize(_chunk_num);
@@ -58,4 +60,50 @@ G1HeapRegionChunkClaimer::G1HeapRegionChunkClaimer(uint region_idx) :
 
 bool G1HeapRegionChunkClaimer::claim_chunk(uint chunk_idx) {
   return _chunks.par_set_bit(chunk_idx);
+}
+
+G1ScanChunksInHeapRegionClosure::G1ScanChunksInHeapRegionClosure(G1HeapRegionChunkClaimer** chunk_claimers,
+                                                                 G1HeapRegionChunkClosure* closure,
+                                                                 uint worker_id) :
+  _chunk_claimers(chunk_claimers),
+  _closure(closure),
+  _worker_id(worker_id),
+  _bitmap(const_cast<G1CMBitMap*>(G1CollectedHeap::heap()->concurrent_mark()->prev_mark_bitmap())) {
+}
+
+bool G1ScanChunksInHeapRegionClosure::do_heap_region(HeapRegion* r) {
+  G1HeapRegionChunkClaimer* claimer = _chunk_claimers[r->hrm_index()];
+  uint total_workers = G1CollectedHeap::heap()->workers()->active_workers();
+  const uint start_pos = _worker_id * claimer->chunk_num() / total_workers;
+  uint chunk_idx = start_pos;
+  G1GCPhaseTimes* phase_time = G1CollectedHeap::heap()->phase_times();
+  phase_time->record_or_add_thread_work_item(G1GCPhaseTimes::RemoveSelfForwardingPtr,
+                                             _worker_id,
+                                             1,
+                                             G1GCPhaseTimes::RemoveSelfForwardingPtrRegions);
+  while (true) {
+    if (claimer->claim_chunk(chunk_idx)) {
+      phase_time->record_or_add_thread_work_item(G1GCPhaseTimes::RemoveSelfForwardingPtr,
+                                                 _worker_id,
+                                                 1,
+                                                 G1GCPhaseTimes::RemoveSelfForwardingPtrChunks);
+
+      G1HeapRegionChunk chunk(r, chunk_idx, claimer->chunk_size(), _bitmap);
+      if (chunk.empty()) {
+        continue;
+      }
+      {
+        G1GCParPhaseTimesTracker tracker(G1CollectedHeap::heap()->phase_times(),
+                                         G1GCPhaseTimes::RemoveSelfForwardingPtr_2,
+                                         _worker_id,
+                                         true);
+        _closure->do_heap_region_chunk(&chunk);
+      }
+    }
+    if (++chunk_idx == claimer->chunk_num()) {
+      chunk_idx = 0;
+    }
+    if (chunk_idx == start_pos) break;
+  }
+  return false;
 }

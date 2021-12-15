@@ -24,11 +24,11 @@
 
 #include "precompiled.hpp"
 
-#include "gc/g1/g1CollectedHeap.hpp"
+#include "gc/g1/g1CollectedHeap.inline.hpp"
 #include "gc/g1/g1EvacFailureRegions.inline.hpp"
+#include "gc/g1/g1GCParPhaseTimesTracker.hpp"
 #include "gc/g1/g1HeapRegionChunk.hpp"
 #include "gc/g1/heapRegion.hpp"
-#include "gc/shared/markBitMap.inline.hpp"
 #include "memory/allocation.hpp"
 #include "runtime/atomic.hpp"
 
@@ -82,39 +82,17 @@ void G1EvacFailureRegions::par_iterate(HeapRegionClosure* closure,
                                                      worker_id);
 }
 
-class HeapRegionChunksClosure : public HeapRegionClosure {
-  G1HeapRegionChunkClaimer** _chunk_claimers;
-  G1HeapRegionChunkClosure* _closure;
-
-public:
-  HeapRegionChunksClosure(G1HeapRegionChunkClaimer** chunk_claimers,
-                          G1HeapRegionChunkClosure* closure) :
-    _chunk_claimers(chunk_claimers),
-    _closure(closure) {
-  }
-
-  bool do_heap_region(HeapRegion* r) override {
-    G1HeapRegionChunkClaimer* claimer = _chunk_claimers[r->hrm_index()];
-    for (uint i = 0; i < claimer->chunk_num(); i++) {
-      if (claimer->claim_chunk(i)) {
-        G1HeapRegionChunk chunk(r, i, const_cast<G1CMBitMap*>(G1CollectedHeap::heap()->concurrent_mark()->prev_mark_bitmap()));
-        if (chunk.empty()) {
-          continue;
-        }
-        _closure->do_heap_region_chunk(&chunk);
-      }
-    }
-    return false;
-  }
-};
-
 void G1EvacFailureRegions::par_iterate_chunks(G1HeapRegionChunkClosure* chunk_closure,
                                               HeapRegionClaimer* _hrclaimer,
                                               uint worker_id) const {
-  HeapRegionChunksClosure closure(_chunk_claimers, chunk_closure);
+  G1GCParPhaseTimesTracker tracker(G1CollectedHeap::heap()->phase_times(),
+                                   G1GCPhaseTimes::RemoveSelfForwardingPtr_1,
+                                   worker_id,
+                                   true);
+  G1ScanChunksInHeapRegionClosure closure(_chunk_claimers, chunk_closure, worker_id);
 
   G1CollectedHeap::heap()->par_iterate_regions_array(&closure,
-                                                     _hrclaimer,
+                                                     nullptr,
                                                      _evac_failure_regions,
                                                      Atomic::load(&_evac_failure_regions_cur_length),
                                                      worker_id);

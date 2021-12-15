@@ -78,6 +78,8 @@ class G1GCPhaseTimes : public CHeapObj<mtGC> {
     SampleCollectionSetCandidates,
     MergePSS,
     RemoveSelfForwardingPtr,
+    RemoveSelfForwardingPtr_1,
+    RemoveSelfForwardingPtr_2,
     ClearCardTable,
     RecalculateUsed,
     ResetHotCardCache,
@@ -142,6 +144,11 @@ class G1GCPhaseTimes : public CHeapObj<mtGC> {
     MergePSSCopiedBytes,
     MergePSSLABWasteBytes,
     MergePSSLABUndoWasteBytes
+  };
+
+  enum RemoveSelfForwardingPtrWorkItems {
+    RemoveSelfForwardingPtrRegions,
+    RemoveSelfForwardingPtrChunks
   };
 
   enum GCEagerlyReclaimHumongousObjectsItems {

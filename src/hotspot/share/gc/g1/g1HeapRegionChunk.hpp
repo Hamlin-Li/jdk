@@ -46,7 +46,7 @@ class G1HeapRegionChunk {
   bool _include_last_obj_in_region;
 
 public:
-  G1HeapRegionChunk(HeapRegion* region, uint chunk_idx, G1CMBitMap* bitmap);
+  G1HeapRegionChunk(HeapRegion* region, uint chunk_idx, uint chunk_size, G1CMBitMap* bitmap);
 
   template<typename ApplyToMarkedClosure>
   void apply_to_marked_objects(ApplyToMarkedClosure* closure);
@@ -84,8 +84,8 @@ public:
 };
 
 class G1HeapRegionChunkClaimer {
-  const uint _chunk_size;
   const uint _chunk_num;
+  const uint _chunk_size;
   const uint _region_idx;
   CHeapBitMap _chunks;
 
@@ -94,11 +94,26 @@ public:
 
   bool claim_chunk(uint chunk_idx);
 
+  uint chunk_size() {
+    return _chunk_size;
+  }
   uint chunk_num() {
     return _chunk_num;
   }
 };
 
+class G1ScanChunksInHeapRegionClosure : public HeapRegionClosure {
+  G1HeapRegionChunkClaimer** _chunk_claimers;
+  G1HeapRegionChunkClosure* _closure;
+  uint _worker_id;
+  G1CMBitMap* _bitmap;
 
+public:
+  G1ScanChunksInHeapRegionClosure(G1HeapRegionChunkClaimer** chunk_claimers,
+                                  G1HeapRegionChunkClosure* closure,
+                                  uint worker_id);
+
+  bool do_heap_region(HeapRegion* r) override;
+};
 
 #endif //SHARE_GC_G1_G1HEAPREGIONCHUNK_HPP

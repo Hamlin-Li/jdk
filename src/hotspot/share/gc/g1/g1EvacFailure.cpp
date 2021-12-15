@@ -235,11 +235,11 @@ G1ParRemoveSelfForwardPtrsTask::G1ParRemoveSelfForwardPtrsTask(G1EvacFailureRegi
 
 void G1ParRemoveSelfForwardPtrsTask::work(uint worker_id) {
   RemoveSelfForwardPtrHRClosure rsfp_cl(worker_id, _evac_failure_regions);
-
   // Iterate through all regions that failed evacuation during the entire collection.
   _evac_failure_regions->par_iterate(&rsfp_cl, &_hrclaimer, worker_id);
 
   RemoveSelfForwardPtrHRChunkClosure rsfp_cl_2(worker_id);
+  // Iterate through all chunks in regions that failed evacuation during the entire collection.
   _evac_failure_regions->par_iterate_chunks(&rsfp_cl_2, &_hrclaimer_2, worker_id);
 }
 
