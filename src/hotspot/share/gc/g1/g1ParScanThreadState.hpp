@@ -110,7 +110,6 @@ class G1ParScanThreadState : public CHeapObj<mtGC> {
   G1RegionMarkStatsCache _evac_failure_mark_stats_cache;
 
 
-  void flush_evac_failure_mark_stats_cache() { _evac_failure_mark_stats_cache.evict_all(); }
   bool inject_evacuation_failure(uint region_idx) EVAC_FAILURE_INJECTOR_RETURN_( return false; );
 
 public:
@@ -158,6 +157,8 @@ public:
   // Pass locally gathered statistics to global state. Returns the total number of
   // HeapWords copied.
   size_t flush(size_t* surviving_young_words);
+
+  void flush_evac_failure_mark_stats_cache() { _evac_failure_mark_stats_cache.evict_all(); }
 
 private:
   void do_partial_array(PartialArrayScanTask task);
@@ -257,6 +258,7 @@ class G1ParScanThreadStateSet : public StackObj {
   PreservedMarksSet* preserved_marks_set() { return _preserved_marks_set; }
 
   void flush();
+  void flush_evac_failure_live_data();
   void record_unused_optional_region(HeapRegion* hr);
 
   G1ParScanThreadState* state_for_worker(uint worker_id);

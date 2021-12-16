@@ -579,6 +579,15 @@ const size_t* G1ParScanThreadStateSet::surviving_young_words() const {
   return _surviving_young_words_total;
 }
 
+void G1ParScanThreadStateSet::flush_evac_failure_live_data() {
+  assert(!_flushed, "thread local state from the per thread states should be flushed once");
+
+  for (uint worker_id = 0; worker_id < _n_workers; ++worker_id) {
+    G1ParScanThreadState* pss = _states[worker_id];
+    pss->flush_evac_failure_mark_stats_cache();
+  }
+}
+
 void G1ParScanThreadStateSet::flush() {
   assert(!_flushed, "thread local state from the per thread states should be flushed once");
 
