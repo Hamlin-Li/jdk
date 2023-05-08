@@ -115,7 +115,7 @@ void VM_Version::initialize() {
   if (UseZic64b) {
     if (CacheLineSize != 64) {
       assert(!FLAG_IS_DEFAULT(CacheLineSize), "default cache line size should be 64 bytes");
-      warning("CacheLineSize is assumed to be 64 bytes because Zic64b is enabled");
+      // warning("CacheLineSize is assumed to be 64 bytes because Zic64b is enabled");
       FLAG_SET_DEFAULT(CacheLineSize, 64);
     }
   } else {
@@ -228,10 +228,70 @@ void VM_Version::initialize() {
     if (FLAG_IS_DEFAULT(BlockZeroingLowLimit)) {
       FLAG_SET_DEFAULT(BlockZeroingLowLimit, 2 * CacheLineSize);
     }
-  } else if (UseBlockZeroing) {
-    warning("Block zeroing is not available");
-    FLAG_SET_DEFAULT(UseBlockZeroing, false);
+    if (FLAG_IS_DEFAULT(AllocatePrefetchZeroing)) {
+      // warning("AllocatePrefetchZeroing enabled by UseZicboz");
+      FLAG_SET_DEFAULT(AllocatePrefetchZeroing, true);
+    }
+  } else {
+    if (UseBlockZeroing) {
+      warning("Block zeroing is not available on this CPU");
+      FLAG_SET_DEFAULT(UseBlockZeroing, false);
+    }
+    if (AllocatePrefetchZeroing) {
+      warning("AllocatePrefetchZeroing specified, but not available on this CPU");
+      FLAG_SET_DEFAULT(AllocatePrefetchZeroing, false);
+    }
   }
+
+/*  if (!UseZicbop) {
+    if (!FLAG_IS_DEFAULT(AllocatePrefetchStyle)) {
+      warning("Zicbop is not available on this CPU");
+    }
+    FLAG_SET_DEFAULT(AllocatePrefetchStyle, 0);
+  } else {*/
+
+    // Limit AllocatePrefetchDistance so that it does not exceed the
+    // constraint in AllocatePrefetchDistanceConstraintFunc.
+    if (FLAG_IS_DEFAULT(AllocatePrefetchDistance)) {
+      FLAG_SET_DEFAULT(AllocatePrefetchDistance, MIN2(512, 3 * (int)CacheLineSize));
+    }
+    assert(CacheLineSize == 64, "Must be");
+    if (FLAG_IS_DEFAULT(AllocatePrefetchStepSize)) {
+      FLAG_SET_DEFAULT(AllocatePrefetchStepSize, (int)CacheLineSize);
+    }
+    assert(CacheLineSize == AllocatePrefetchStepSize, "Must be");
+    if (FLAG_IS_DEFAULT(PrefetchScanIntervalInBytes)) {
+      FLAG_SET_DEFAULT(PrefetchScanIntervalInBytes, 3 * (int)CacheLineSize);
+    }
+    if (FLAG_IS_DEFAULT(PrefetchCopyIntervalInBytes)) {
+      FLAG_SET_DEFAULT(PrefetchCopyIntervalInBytes, 3 * (int)CacheLineSize);
+    }
+
+    if (PrefetchCopyIntervalInBytes != -1 &&
+        ((PrefetchCopyIntervalInBytes & 7) || (PrefetchCopyIntervalInBytes >= 32768))) {
+      warning("PrefetchCopyIntervalInBytes must be -1, or a multiple of 8 and < 32768");
+      PrefetchCopyIntervalInBytes &= ~7;
+      if (PrefetchCopyIntervalInBytes >= 32768) {
+        PrefetchCopyIntervalInBytes = 32760;
+      }
+    }
+    if (AllocatePrefetchDistance !=-1 && (AllocatePrefetchDistance & 7)) {
+      warning("AllocatePrefetchDistance must be multiple of 8");
+      AllocatePrefetchDistance &= ~7;
+    }
+    if (AllocatePrefetchZeroing) {
+      assert(AllocatePrefetchStepSize == CacheLineSize, "Must be same");
+      // warning("AllocatePrefetchStepSize must be same as CacheLineSize when using AllocatePrefetchStepSize.");
+      AllocatePrefetchStepSize = CacheLineSize;
+    }
+    if (AllocatePrefetchStepSize & 7) {
+      warning("AllocatePrefetchStepSize must be multiple of 8");
+      AllocatePrefetchStepSize &= ~7;
+    }
+
+  assert(CacheLineSize == AllocatePrefetchStepSize, "Must be");
+  assert(64 == AllocatePrefetchStepSize, "Must be");
+  assert(AllocatePrefetchZeroing, "Must be");
 
   if (UseRVV) {
     if (!ext_V.enabled()) {
