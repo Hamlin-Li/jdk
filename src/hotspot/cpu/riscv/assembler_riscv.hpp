@@ -1701,7 +1701,6 @@ enum VectorMask {
 
   // Vector Element Index Instruction
   INSN(vid_v, 0b1010111, 0b0000010001010, 0b010100);
-
 #undef INSN
 
 enum Nf {
@@ -1914,6 +1913,36 @@ enum Nf {
   INSN(roriw, 0b0011011, 0b101, 0b0110000);
 
 #undef INSN
+
+// ========================================
+// RISC-V Crypto Instructions Extension
+// ========================================
+
+#define patch_VArith(op, Reg, funct3, Reg_or_Imm5, Vs2, vm, funct6)            \
+    unsigned insn = 0;                                                         \
+    patch((address)&insn, 6, 0, op);                                           \
+    patch((address)&insn, 14, 12, funct3);                                     \
+    patch((address)&insn, 19, 15, Reg_or_Imm5);                                \
+    patch((address)&insn, 25, vm);                                             \
+    patch((address)&insn, 31, 26, funct6);                                     \
+    patch_reg((address)&insn, 7, Reg);                                         \
+    patch_reg((address)&insn, 20, Vs2);                                        \
+    emit(insn)
+
+#define INSN(NAME, op, funct3, funct6)                                                             \
+  void NAME(VectorRegister Vd, VectorRegister Vs2, uint32_t imm, VectorMask vm = unmasked) {       \
+    guarantee(is_uimm5(imm), "imm is invalid");                                                    \
+    patch_VArith(op, Vd, funct3, (uint32_t)(imm & 0x1f), Vs2, vm, funct6);                         \
+  }
+
+   INSN(vror_vi, 0b1010111, 0b011, 0b010100);
+   INSN(vror_vx, 0b1010111, 0b100, 0b010100);
+   INSN(vror_vv, 0b1010111, 0b000, 0b010100);
+   INSN(vrol_vx, 0b1010111, 0b100, 0b010101);
+   INSN(vrol_vv, 0b1010111, 0b000, 0b010101);
+
+#undef INSN
+#undef patch_VArith
 
 // ========================================
 // RISC-V Compressed Instructions Extension

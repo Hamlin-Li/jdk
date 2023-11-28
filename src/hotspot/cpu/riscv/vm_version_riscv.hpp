@@ -110,6 +110,9 @@ class VM_Version : public Abstract_VM_Version {
   // Zic64b Cache blocks must be 64 bytes in size, naturally aligned in the address space.
   // Zihintpause Pause instruction HINT
   //
+  // Crypto Vector
+  // Zvkb Vector Cryptography Bit-manipulation
+  //
   // Other features and settings
   // mvendorid Manufactory JEDEC id encoded, ISA vol 2 3.1.2..
   // marchid   Id for microarch. Mvendorid plus marchid uniquely identify the microarch.
@@ -142,6 +145,7 @@ class VM_Version : public Abstract_VM_Version {
   decl(ext_Zic64b      , "Zic64b"      , RV_NO_FLAG_BIT, true , UPDATE_DEFAULT(UseZic64b))      \
   decl(ext_Ztso        , "Ztso"        , RV_NO_FLAG_BIT, true , UPDATE_DEFAULT(UseZtso))        \
   decl(ext_Zihintpause , "Zihintpause" , RV_NO_FLAG_BIT, true , UPDATE_DEFAULT(UseZihintpause)) \
+  decl(ext_Zvkb        , "Zvkb"        , RV_NO_FLAG_BIT, true , UPDATE_DEFAULT(UseZvkb))        \
   decl(mvendorid       , "VendorId"    , RV_NO_FLAG_BIT, false, NO_UPDATE_DEFAULT)              \
   decl(marchid         , "ArchId"      , RV_NO_FLAG_BIT, false, NO_UPDATE_DEFAULT)              \
   decl(mimpid          , "ImpId"       , RV_NO_FLAG_BIT, false, NO_UPDATE_DEFAULT)              \

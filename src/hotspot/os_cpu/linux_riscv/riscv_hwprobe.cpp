@@ -49,6 +49,7 @@
 #define   RISCV_HWPROBE_EXT_ZBA                 (1 << 3)
 #define   RISCV_HWPROBE_EXT_ZBB                 (1 << 4)
 #define   RISCV_HWPROBE_EXT_ZBS                 (1 << 5)
+#define   RISCV_HWPROBE_EXT_ZVKB                (1 << 19)
 
 #define RISCV_HWPROBE_KEY_CPUPERF_0     5
 #define   RISCV_HWPROBE_MISALIGNED_UNKNOWN      (0 << 0)

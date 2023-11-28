@@ -97,6 +97,10 @@ void VM_Version::initialize() {
     if (FLAG_IS_DEFAULT(UseZihintpause)) {
       FLAG_SET_DEFAULT(UseZihintpause, true);
     }
+
+    if (FLAG_IS_DEFAULT(UseZvkb)) {
+      FLAG_SET_DEFAULT(UseZvkb, true);
+    }
   }
 
   // Enable vendor specific features
