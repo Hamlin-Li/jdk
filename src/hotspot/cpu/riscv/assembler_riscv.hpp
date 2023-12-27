@@ -1939,12 +1939,26 @@ enum Nf {
   }
 
    INSN(vror_vi, 0b1010111, 0b011, 0b010100);
-   INSN(vror_vx, 0b1010111, 0b100, 0b010100);
-   INSN(vror_vv, 0b1010111, 0b000, 0b010100);
-   INSN(vrol_vx, 0b1010111, 0b100, 0b010101);
-   INSN(vrol_vv, 0b1010111, 0b000, 0b010101);
-
 #undef INSN
+
+#define INSN(NAME, op, funct3, funct6)                                                             \
+  void NAME(VectorRegister Vd, VectorRegister Vs2, Register Rs1, VectorMask vm = unmasked) {       \
+    patch_VArith(op, Vd, funct3, Rs1->raw_encoding(), Vs2, vm, funct6);                            \
+  }
+
+   INSN(vror_vx, 0b1010111, 0b100, 0b010100);
+   INSN(vrol_vx, 0b1010111, 0b100, 0b010101);
+#undef INSN
+
+#define INSN(NAME, op, funct3, funct6)                                                             \
+  void NAME(VectorRegister Vd, VectorRegister Vs2, VectorRegister Vs1, VectorMask vm = unmasked) { \
+    patch_VArith(op, Vd, funct3, Vs1->raw_encoding(), Vs2, vm, funct6);                            \
+  }
+
+   INSN(vror_vv, 0b1010111, 0b000, 0b010100);
+   INSN(vrol_vv, 0b1010111, 0b000, 0b010101);
+#undef INSN
+
 #undef patch_VArith
 
 // ========================================
