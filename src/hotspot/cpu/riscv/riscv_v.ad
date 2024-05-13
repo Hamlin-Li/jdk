@@ -1781,42 +1781,32 @@ instruct replicateD(vReg dst, fRegD src) %{
   ins_pipe(pipe_slow);
 %}
 
-// vector shift
+// -------------- vector shift --------------
+//
+// vector arithmetic shift right
 
-instruct vasrB(vReg dst, vReg src, vReg shift, vRegMask_V0 v0) %{
+instruct vasrB(vReg dst, vReg src, vReg shift) %{
   match(Set dst (RShiftVB src shift));
   ins_cost(VEC_COST);
-  effect(TEMP_DEF dst, TEMP v0);
+  effect(TEMP_DEF dst);
   format %{ "vasrB $dst, $src, $shift" %}
   ins_encode %{
     __ vsetvli_helper(T_BYTE, Matcher::vector_length(this));
-    // if shift > BitsPerByte - 1, clear the low BitsPerByte - 1 bits
-    __ vmsgtu_vi(as_VectorRegister($v0$$reg), as_VectorRegister($shift$$reg), BitsPerByte - 1);
-    __ vsra_vi(as_VectorRegister($dst$$reg), as_VectorRegister($src$$reg),
-               BitsPerByte - 1, Assembler::v0_t);
-    // otherwise, shift
-    __ vmnot_m(as_VectorRegister($v0$$reg), as_VectorRegister($v0$$reg));
     __ vsra_vv(as_VectorRegister($dst$$reg), as_VectorRegister($src$$reg),
-               as_VectorRegister($shift$$reg), Assembler::v0_t);
+               as_VectorRegister($shift$$reg));
   %}
   ins_pipe(pipe_slow);
 %}
 
-instruct vasrS(vReg dst, vReg src, vReg shift, vRegMask_V0 v0) %{
+instruct vasrS(vReg dst, vReg src, vReg shift) %{
   match(Set dst (RShiftVS src shift));
   ins_cost(VEC_COST);
-  effect(TEMP_DEF dst, TEMP v0);
+  effect(TEMP_DEF dst);
   format %{ "vasrS $dst, $src, $shift" %}
   ins_encode %{
     __ vsetvli_helper(T_SHORT, Matcher::vector_length(this));
-    // if shift > BitsPerShort - 1, clear the low BitsPerShort - 1 bits
-    __ vmsgtu_vi(as_VectorRegister($v0$$reg), as_VectorRegister($shift$$reg), BitsPerShort - 1);
-    __ vsra_vi(as_VectorRegister($dst$$reg), as_VectorRegister($src$$reg),
-               BitsPerShort - 1, Assembler::v0_t);
-    // otherwise, shift
-    __ vmnot_m(as_VectorRegister($v0$$reg), as_VectorRegister($v0$$reg));
     __ vsra_vv(as_VectorRegister($dst$$reg), as_VectorRegister($src$$reg),
-               as_VectorRegister($shift$$reg), Assembler::v0_t);
+               as_VectorRegister($shift$$reg));
   %}
   ins_pipe(pipe_slow);
 %}
@@ -1845,36 +1835,28 @@ instruct vasrL(vReg dst, vReg src, vReg shift) %{
   ins_pipe(pipe_slow);
 %}
 
-instruct vasrB_masked(vReg dst_src, vReg shift, vRegMask vmask, vRegMask_V0 v0) %{
-  match(Set dst_src (RShiftVB (Binary dst_src shift) vmask));
+// vector arithmetic shift right -- predicated
+
+instruct vasrB_masked(vReg dst_src, vReg shift, vRegMask_V0 v0) %{
+  match(Set dst_src (RShiftVB (Binary dst_src shift) v0));
   ins_cost(VEC_COST);
-  effect(TEMP_DEF dst_src, TEMP v0);
-  format %{ "vasrB_masked $dst_src, $dst_src, $shift, $vmask\t# KILL $v0" %}
+  effect(TEMP_DEF dst_src);
+  format %{ "vasrB_masked $dst_src, $dst_src, $shift, $v0" %}
   ins_encode %{
     __ vsetvli_helper(T_BYTE, Matcher::vector_length(this));
-    __ vmsgtu_vi(as_VectorRegister($v0$$reg), as_VectorRegister($shift$$reg), BitsPerByte - 1);
-    // if shift > BitsPerByte - 1, clear the low BitsPerByte - 1 bits
-    __ vmerge_vim(as_VectorRegister($shift$$reg), as_VectorRegister($shift$$reg), BitsPerByte - 1);
-    // otherwise, shift
-    __ vmv1r_v(as_VectorRegister($v0$$reg), as_VectorRegister($vmask$$reg));
     __ vsra_vv(as_VectorRegister($dst_src$$reg), as_VectorRegister($dst_src$$reg),
                as_VectorRegister($shift$$reg), Assembler::v0_t);
   %}
   ins_pipe(pipe_slow);
 %}
 
-instruct vasrS_masked(vReg dst_src, vReg shift, vRegMask vmask, vRegMask_V0 v0) %{
-  match(Set dst_src (RShiftVS (Binary dst_src shift) vmask));
+instruct vasrS_masked(vReg dst_src, vReg shift, vRegMask_V0 v0) %{
+  match(Set dst_src (RShiftVS (Binary dst_src shift) v0));
   ins_cost(VEC_COST);
-  effect(TEMP_DEF dst_src, TEMP v0);
-  format %{ "vasrS_masked $dst_src, $dst_src, $shift, $vmask\t# KILL $v0" %}
+  effect(TEMP_DEF dst_src);
+  format %{ "vasrS_masked $dst_src, $dst_src, $shift, $v0" %}
   ins_encode %{
     __ vsetvli_helper(T_SHORT, Matcher::vector_length(this));
-    __ vmsgtu_vi(as_VectorRegister($v0$$reg), as_VectorRegister($shift$$reg), BitsPerShort - 1);
-    // if shift > BitsPerShort - 1, clear the low BitsPerShort - 1 bits
-    __ vmerge_vim(as_VectorRegister($shift$$reg), as_VectorRegister($shift$$reg), BitsPerShort - 1);
-    // otherwise, shift
-    __ vmv1r_v(as_VectorRegister($v0$$reg), as_VectorRegister($vmask$$reg));
     __ vsra_vv(as_VectorRegister($dst_src$$reg), as_VectorRegister($dst_src$$reg),
                as_VectorRegister($shift$$reg), Assembler::v0_t);
   %}
@@ -1907,40 +1889,30 @@ instruct vasrL_masked(vReg dst_src, vReg shift, vRegMask_V0 v0) %{
   ins_pipe(pipe_slow);
 %}
 
-instruct vlslB(vReg dst, vReg src, vReg shift, vRegMask_V0 v0) %{
+// vector logic shift left
+
+instruct vlslB(vReg dst, vReg src, vReg shift) %{
   match(Set dst (LShiftVB src shift));
   ins_cost(VEC_COST);
-  effect(TEMP_DEF dst, TEMP v0);
+  effect(TEMP_DEF dst);
   format %{ "vlslB $dst, $src, $shift" %}
   ins_encode %{
     __ vsetvli_helper(T_BYTE, Matcher::vector_length(this));
-    // if shift > BitsPerByte - 1, clear the element
-    __ vmsgtu_vi(as_VectorRegister($v0$$reg), as_VectorRegister($shift$$reg), BitsPerByte - 1);
-    __ vxor_vv(as_VectorRegister($dst$$reg), as_VectorRegister($src$$reg),
-               as_VectorRegister($src$$reg), Assembler::v0_t);
-    // otherwise, shift
-    __ vmnot_m(as_VectorRegister($v0$$reg), as_VectorRegister($v0$$reg));
     __ vsll_vv(as_VectorRegister($dst$$reg), as_VectorRegister($src$$reg),
-               as_VectorRegister($shift$$reg), Assembler::v0_t);
+               as_VectorRegister($shift$$reg));
   %}
   ins_pipe(pipe_slow);
 %}
 
-instruct vlslS(vReg dst, vReg src, vReg shift, vRegMask_V0 v0) %{
+instruct vlslS(vReg dst, vReg src, vReg shift) %{
   match(Set dst (LShiftVS src shift));
   ins_cost(VEC_COST);
-  effect(TEMP_DEF dst, TEMP v0);
+  effect(TEMP_DEF dst);
   format %{ "vlslS $dst, $src, $shift" %}
   ins_encode %{
     __ vsetvli_helper(T_SHORT, Matcher::vector_length(this));
-    // if shift > BitsPerShort - 1, clear the element
-    __ vmsgtu_vi(as_VectorRegister($v0$$reg), as_VectorRegister($shift$$reg), BitsPerShort - 1);
-    __ vxor_vv(as_VectorRegister($dst$$reg), as_VectorRegister($src$$reg),
-               as_VectorRegister($src$$reg), Assembler::v0_t);
-    // otherwise, shift
-    __ vmnot_m(as_VectorRegister($v0$$reg), as_VectorRegister($v0$$reg));
     __ vsll_vv(as_VectorRegister($dst$$reg), as_VectorRegister($src$$reg),
-               as_VectorRegister($shift$$reg), Assembler::v0_t);
+               as_VectorRegister($shift$$reg));
   %}
   ins_pipe(pipe_slow);
 %}
@@ -1969,42 +1941,28 @@ instruct vlslL(vReg dst, vReg src, vReg shift) %{
   ins_pipe(pipe_slow);
 %}
 
-instruct vlslB_masked(vReg dst_src, vReg shift, vRegMask vmask, vRegMask_V0 v0) %{
-  match(Set dst_src (LShiftVB (Binary dst_src shift) vmask));
+// vector logic shift left - predicated
+
+instruct vlslB_masked(vReg dst_src, vReg shift, vRegMask_V0 v0) %{
+  match(Set dst_src (LShiftVB (Binary dst_src shift) v0));
   ins_cost(VEC_COST);
-  effect(TEMP_DEF dst_src, TEMP v0);
-  format %{ "vlslB_masked $dst_src, $dst_src, $shift, $vmask\t# KILL $v0" %}
+  effect(TEMP_DEF dst_src);
+  format %{ "vlslB_masked $dst_src, $dst_src, $shift, $v0" %}
   ins_encode %{
     __ vsetvli_helper(T_BYTE, Matcher::vector_length(this));
-    // if shift > BitsPerByte - 1, clear the element
-    __ vmsgtu_vi(as_VectorRegister($v0$$reg), as_VectorRegister($shift$$reg), BitsPerByte - 1);
-    __ vmand_mm(as_VectorRegister($v0$$reg), as_VectorRegister($v0$$reg),
-                as_VectorRegister($vmask$$reg));
-    __ vxor_vv(as_VectorRegister($dst_src$$reg), as_VectorRegister($dst_src$$reg),
-               as_VectorRegister($dst_src$$reg), Assembler::v0_t);
-    // otherwise, shift
-    __ vmv1r_v(as_VectorRegister($v0$$reg), as_VectorRegister($vmask$$reg));
     __ vsll_vv(as_VectorRegister($dst_src$$reg), as_VectorRegister($dst_src$$reg),
                as_VectorRegister($shift$$reg), Assembler::v0_t);
   %}
   ins_pipe(pipe_slow);
 %}
 
-instruct vlslS_masked(vReg dst_src, vReg shift, vRegMask vmask, vRegMask_V0 v0) %{
-  match(Set dst_src (LShiftVS (Binary dst_src shift) vmask));
+instruct vlslS_masked(vReg dst_src, vReg shift, vRegMask_V0 v0) %{
+  match(Set dst_src (LShiftVS (Binary dst_src shift) v0));
   ins_cost(VEC_COST);
-  effect(TEMP_DEF dst_src, TEMP v0);
-  format %{ "vlslS_masked $dst_src, $dst_src, $shift, $vmask\t# KILL $v0" %}
+  effect(TEMP_DEF dst_src);
+  format %{ "vlslS_masked $dst_src, $dst_src, $shift, $v0" %}
   ins_encode %{
     __ vsetvli_helper(T_SHORT, Matcher::vector_length(this));
-    // if shift > BitsPerShort - 1, clear the element
-    __ vmsgtu_vi(as_VectorRegister($v0$$reg), as_VectorRegister($shift$$reg), BitsPerShort - 1);
-    __ vmand_mm(as_VectorRegister($v0$$reg), as_VectorRegister($v0$$reg),
-                as_VectorRegister($vmask$$reg));
-    __ vxor_vv(as_VectorRegister($dst_src$$reg), as_VectorRegister($dst_src$$reg),
-               as_VectorRegister($dst_src$$reg), Assembler::v0_t);
-    // otherwise, shift
-    __ vmv1r_v(as_VectorRegister($v0$$reg), as_VectorRegister($vmask$$reg));
     __ vsll_vv(as_VectorRegister($dst_src$$reg), as_VectorRegister($dst_src$$reg),
                as_VectorRegister($shift$$reg), Assembler::v0_t);
   %}
@@ -2037,40 +1995,30 @@ instruct vlslL_masked(vReg dst_src, vReg shift, vRegMask_V0 v0) %{
   ins_pipe(pipe_slow);
 %}
 
-instruct vlsrB(vReg dst, vReg src, vReg shift, vRegMask_V0 v0) %{
+// vector logic shift right
+
+instruct vlsrB(vReg dst, vReg src, vReg shift) %{
   match(Set dst (URShiftVB src shift));
   ins_cost(VEC_COST);
-  effect(TEMP_DEF dst, TEMP v0);
+  effect(TEMP_DEF dst);
   format %{ "vlsrB $dst, $src, $shift" %}
   ins_encode %{
     __ vsetvli_helper(T_BYTE, Matcher::vector_length(this));
-    // if shift > BitsPerByte - 1, clear the element
-    __ vmsgtu_vi(as_VectorRegister($v0$$reg), as_VectorRegister($shift$$reg), BitsPerByte - 1);
-    __ vxor_vv(as_VectorRegister($dst$$reg), as_VectorRegister($src$$reg),
-               as_VectorRegister($src$$reg), Assembler::v0_t);
-    // otherwise, shift
-    __ vmnot_m(as_VectorRegister($v0$$reg), as_VectorRegister($v0$$reg));
     __ vsrl_vv(as_VectorRegister($dst$$reg), as_VectorRegister($src$$reg),
-               as_VectorRegister($shift$$reg), Assembler::v0_t);
+               as_VectorRegister($shift$$reg));
   %}
   ins_pipe(pipe_slow);
 %}
 
-instruct vlsrS(vReg dst, vReg src, vReg shift, vRegMask_V0 v0) %{
+instruct vlsrS(vReg dst, vReg src, vReg shift) %{
   match(Set dst (URShiftVS src shift));
   ins_cost(VEC_COST);
-  effect(TEMP_DEF dst, TEMP v0);
+  effect(TEMP_DEF dst);
   format %{ "vlsrS $dst, $src, $shift" %}
   ins_encode %{
     __ vsetvli_helper(T_SHORT, Matcher::vector_length(this));
-    // if shift > BitsPerShort - 1, clear the element
-    __ vmsgtu_vi(as_VectorRegister($v0$$reg), as_VectorRegister($shift$$reg), BitsPerShort - 1);
-    __ vxor_vv(as_VectorRegister($dst$$reg), as_VectorRegister($src$$reg),
-               as_VectorRegister($src$$reg), Assembler::v0_t);
-    // otherwise, shift
-    __ vmnot_m(as_VectorRegister($v0$$reg), as_VectorRegister($v0$$reg));
     __ vsrl_vv(as_VectorRegister($dst$$reg), as_VectorRegister($src$$reg),
-               as_VectorRegister($shift$$reg), Assembler::v0_t);
+               as_VectorRegister($shift$$reg));
   %}
   ins_pipe(pipe_slow);
 %}
@@ -2099,42 +2047,28 @@ instruct vlsrL(vReg dst, vReg src, vReg shift) %{
   ins_pipe(pipe_slow);
 %}
 
-instruct vlsrB_masked(vReg dst_src, vReg shift, vRegMask vmask, vRegMask_V0 v0) %{
-  match(Set dst_src (URShiftVB (Binary dst_src shift) vmask));
+// vector logic shift right - predicated
+
+instruct vlsrB_masked(vReg dst_src, vReg shift, vRegMask_V0 v0) %{
+  match(Set dst_src (URShiftVB (Binary dst_src shift) v0));
   ins_cost(VEC_COST);
-  effect(TEMP_DEF dst_src, TEMP v0);
-  format %{ "vlsrB_masked $dst_src, $dst_src, $shift, $vmask\t# KILL $v0" %}
+  effect(TEMP_DEF dst_src);
+  format %{ "vlsrB_masked $dst_src, $dst_src, $shift, $v0" %}
   ins_encode %{
     __ vsetvli_helper(T_BYTE, Matcher::vector_length(this));
-    // if shift > BitsPerByte - 1, clear the element
-    __ vmsgtu_vi(as_VectorRegister($v0$$reg), as_VectorRegister($shift$$reg), BitsPerByte - 1);
-    __ vmand_mm(as_VectorRegister($v0$$reg), as_VectorRegister($v0$$reg),
-                as_VectorRegister($vmask$$reg));
-    __ vxor_vv(as_VectorRegister($dst_src$$reg), as_VectorRegister($dst_src$$reg),
-               as_VectorRegister($dst_src$$reg), Assembler::v0_t);
-    // otherwise, shift
-    __ vmv1r_v(as_VectorRegister($v0$$reg), as_VectorRegister($vmask$$reg));
     __ vsrl_vv(as_VectorRegister($dst_src$$reg), as_VectorRegister($dst_src$$reg),
                as_VectorRegister($shift$$reg), Assembler::v0_t);
   %}
   ins_pipe(pipe_slow);
 %}
 
-instruct vlsrS_masked(vReg dst_src, vReg shift, vRegMask vmask, vRegMask_V0 v0) %{
-  match(Set dst_src (URShiftVS (Binary dst_src shift) vmask));
+instruct vlsrS_masked(vReg dst_src, vReg shift, vRegMask_V0 v0) %{
+  match(Set dst_src (URShiftVS (Binary dst_src shift) v0));
   ins_cost(VEC_COST);
-  effect(TEMP_DEF dst_src, TEMP v0);
-  format %{ "vlsrS_masked $dst_src, $dst_src, $shift, $vmask\t# KILL $v0" %}
+  effect(TEMP_DEF dst_src);
+  format %{ "vlsrS_masked $dst_src, $dst_src, $shift, $v0" %}
   ins_encode %{
     __ vsetvli_helper(T_SHORT, Matcher::vector_length(this));
-    // if shift > BitsPerShort - 1, clear the element
-    __ vmsgtu_vi(as_VectorRegister($v0$$reg), as_VectorRegister($shift$$reg), BitsPerShort - 1);
-    __ vmand_mm(as_VectorRegister($v0$$reg), as_VectorRegister($v0$$reg),
-                as_VectorRegister($vmask$$reg));
-    __ vxor_vv(as_VectorRegister($dst_src$$reg), as_VectorRegister($dst_src$$reg),
-               as_VectorRegister($dst_src$$reg), Assembler::v0_t);
-    // otherwise, shift
-    __ vmv1r_v(as_VectorRegister($v0$$reg), as_VectorRegister($vmask$$reg));
     __ vsrl_vv(as_VectorRegister($dst_src$$reg), as_VectorRegister($dst_src$$reg),
                as_VectorRegister($shift$$reg), Assembler::v0_t);
   %}
@@ -2166,6 +2100,8 @@ instruct vlsrL_masked(vReg dst_src, vReg shift, vRegMask_V0 v0) %{
   %}
   ins_pipe(pipe_slow);
 %}
+
+// vector arithmetic shift right - imm
 
 instruct vasrB_imm(vReg dst, vReg src, immI shift) %{
   match(Set dst (RShiftVB src (RShiftCntV shift)));
@@ -2238,6 +2174,8 @@ instruct vasrL_imm(vReg dst, vReg src, immI shift) %{
   ins_pipe(pipe_slow);
 %}
 
+// vector arithmetic shift right - imm, predicated
+
 instruct vasrB_imm_masked(vReg dst_src, immI shift, vRegMask_V0 v0) %{
   match(Set dst_src (RShiftVB (Binary dst_src (RShiftCntV shift)) v0));
   ins_cost(VEC_COST);
@@ -2304,6 +2242,8 @@ instruct vasrL_imm_masked(vReg dst_src, immI shift, vRegMask_V0 v0) %{
   %}
   ins_pipe(pipe_slow);
 %}
+
+// vector logic shift right - imm
 
 instruct vlsrB_imm(vReg dst, vReg src, immI shift) %{
   match(Set dst (URShiftVB src (RShiftCntV shift)));
@@ -2384,6 +2324,8 @@ instruct vlsrL_imm(vReg dst, vReg src, immI shift) %{
   ins_pipe(pipe_slow);
 %}
 
+// vector logic shift right - imm, predicated
+
 instruct vlsrB_imm_masked(vReg dst_src, immI shift, vRegMask_V0 v0) %{
   match(Set dst_src (URShiftVB (Binary dst_src (RShiftCntV shift)) v0));
   ins_cost(VEC_COST);
@@ -2459,6 +2401,8 @@ instruct vlsrL_imm_masked(vReg dst_src, immI shift, vRegMask_V0 v0) %{
   ins_pipe(pipe_slow);
 %}
 
+// vector logic shift left - imm
+
 instruct vlslB_imm(vReg dst, vReg src, immI shift) %{
   match(Set dst (LShiftVB src (LShiftCntV shift)));
   ins_cost(VEC_COST);
@@ -2517,6 +2461,8 @@ instruct vlslL_imm(vReg dst, vReg src, immI shift) %{
   %}
   ins_pipe(pipe_slow);
 %}
+
+// vector logic shift left - imm, predicated
 
 instruct vlslB_imm_masked(vReg dst_src, immI shift, vRegMask_V0 v0) %{
   match(Set dst_src (LShiftVB (Binary dst_src (LShiftCntV shift)) v0));
