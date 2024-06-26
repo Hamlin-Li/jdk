@@ -246,6 +246,7 @@ void VM_Version::initialize() {
   }
 
   // Base64
+  /*
   if (UseRVV) {
     if (FLAG_IS_DEFAULT(UseBASE64Intrinsics)) {
       FLAG_SET_DEFAULT(UseBASE64Intrinsics, true);
@@ -256,6 +257,7 @@ void VM_Version::initialize() {
     }
     FLAG_SET_DEFAULT(UseBASE64Intrinsics, false);
   }
+  */
 
   // UseZvbb (depends on RVV).
   if (UseZvbb && !UseRVV) {

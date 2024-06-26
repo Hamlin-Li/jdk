@@ -230,8 +230,14 @@ const int ObjectAlignmentInBytes = 8;
                                                                             \
   product(bool, UseBASE64Intrinsics, false,                                 \
           "Use intrinsics for java.util.Base64")                            \
-  product(bool, UseBASE64IntrinsicsUseSegmented, false,                                 \
+  product(bool, UseBASE64IntrinsicsUseSegmented, true,                                 \
           "Use segmented intrinsics for java.util.Base64")                            \
+  product(uintx, UseBASE64IntrinsicsLMUL, 2,                                 \
+          "m1 == 1, m2 == 2, m8 = mf2")                                        \
+          range(0, 100)                                                     \
+  product(uintx, UseBASE64IntrinsicsScalarVersion, 3,                                 \
+          "version: 1, 2, 3")                                        \
+          range(0, 100)                                                     \
                                                                             \
   product(bool, UsePoly1305Intrinsics, false, DIAGNOSTIC,                   \
           "Use intrinsics for sun.security.util.math.intpoly")              \
