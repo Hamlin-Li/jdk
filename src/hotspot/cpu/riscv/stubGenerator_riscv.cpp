@@ -5183,6 +5183,148 @@ class StubGenerator: public StubCodeGenerator {
    *  c_rarg5   - isURL, Base64 or URL character set
    *  c_rarg6   - isMIME, Decoding MIME block - unused here
    */
+  address generate_base64_decodeBlock_vrgather() {
+
+    __ align(CodeEntryAlignment);
+    StubCodeMark mark(this, "StubRoutines", "decodeBlock");
+    address start = __ pc();
+
+    Register src    = c_rarg0;
+    Register soff   = c_rarg1;
+    Register send   = c_rarg2;
+    Register dst    = c_rarg3;
+    Register doff   = c_rarg4;
+    Register isURL  = c_rarg5;
+
+    // isMIME = c_rarg6, which is not used in this code.
+    // Register codec = c_rarg6;
+    Register dstBackup = c_rarg7;
+    Register length = x31; // t6, total length of src data in bytes
+
+    Register size = soff;
+    Register failedIdx = send;
+    Register tmp = doff;
+
+    RegSet saved_regs;
+    __ push_reg(saved_regs, sp);
+
+    __ sub(length, send, soff);
+    // length should be multiple of 4
+    __ srli(length, length, 2);
+    // real src/dst to process data
+    __ add(src, src, soff);
+    __ add(dst, dst, doff);
+    // backup of dst, used to calculate the return value at exit
+    __ mv(dstBackup, dst);
+
+    // v9: err_lo
+    // v10: err_hi
+    // v11: off
+        static const unsigned char err_lo[16] = { 21, 17, 17, 17, 17,  17,  17,  17,  17, 17, 19, 26, 27, 27, 27, 26 };
+        static const unsigned char err_hi[16] = { 16, 16, 1,  2,  4,   8,   4,   8,   16, 16, 16, 16, 16, 16, 16, 16 };
+        static const unsigned char off[16]    = { 0,  16, 19, 4,  (unsigned char)-65, (unsigned char)-65, (unsigned char)-71, (unsigned char)-71, 0,  0,  0,  0,  0,  0,  0,  0 };
+
+    Label LBB0_4, LBB0_2;
+            // __ srli    (a2, a2, 2);
+            __ beqz    (length, LBB0_4);
+    // .Lpcrel_hi0:
+            __ la(tmp, ExternalAddress((address) err_lo));
+            __ vsetivli        (zr, 16, Assembler::e8, Assembler::m1); //, Assembler::ta, Assembler::ma);
+            __ vle8_v  (v9, tmp);
+    // .Lpcrel_hi1:
+            __ la(tmp, ExternalAddress((address) err_hi));
+            __ vle8_v  (v10, tmp);
+    // .Lpcrel_hi2:
+            __ la(tmp, ExternalAddress((address) off));
+            __ vle8_v  (v11, tmp);
+
+
+        __ vsetvli (tmp, zr, Assembler::e8, Assembler::m4); //, Assembler::ta, Assembler::ma);
+        __ li      (tmp, 47);
+__ BIND(LBB0_2); //                                # =>This Inner Loop Header: Depth=1
+        __ vsetvli (size, length, Assembler::e8, Assembler::m1); //, Assembler::ta, Assembler::ma);
+        __ vlseg4e8_v      (v12, src);
+        __ vsrl_vi (v16, v12, 4);
+        __ vsrl_vi (v17, v13, 4);
+        __ vsrl_vi (v18, v14, 4);
+        __ vsrl_vi (v19, v15, 4);
+        __ vand_vi (v8, v12, 15);
+        __ vand_vi (v22, v13, 15);
+        __ vand_vi (v23, v14, 15);
+        __ vand_vi (v24, v15, 15);
+        __ vrgather_vv     (v20, v9, v8);
+        __ vrgather_vv     (v21, v9, v22);
+        __ vrgather_vv     (v22, v9, v23);
+        __ vrgather_vv     (v23, v9, v24);
+        __ vrgather_vv     (v24, v10, v16);
+        __ vrgather_vv     (v25, v10, v17);
+        __ vrgather_vv     (v26, v10, v18);
+        __ vrgather_vv     (v27, v10, v19);
+        __ vsetvli (failedIdx, zr, Assembler::e8, Assembler::m4); //, Assembler::ta, Assembler::ma);
+        __ vand_vv (v20, v20, v24);
+        __ vmsne_vi        (v8, v20, 0);
+        __ vfirst_m        (failedIdx, v8);
+        __ bgez    (failedIdx, LBB0_4);
+        __ vsetvli (zr, length, Assembler::e8, Assembler::m1); //, Assembler::ta, Assembler::ma);
+        __ vmseq_vx        (v0, v15, tmp);
+        __ vmseq_vx        (v8, v14, tmp);
+        __ vmerge_vim      (v19, v19, 1);
+        __ vmv_v_v (v0, v8);
+        __ vmerge_vim      (v18, v18, 1);
+        __ vmseq_vx        (v0, v13, tmp);
+        __ vmseq_vx        (v8, v12, tmp);
+        __ vmerge_vim      (v17, v17, 1);
+        __ vmv_v_v (v0, v8);
+        __ vmerge_vim      (v8, v16, 1);
+        __ vrgather_vv     (v16, v11, v8);
+        __ vrgather_vv     (v8, v11, v17);
+        __ vrgather_vv     (v17, v11, v18);
+        __ vrgather_vv     (v18, v11, v19);
+        __ vadd_vv (v12, v12, v16);
+        __ vadd_vv (v8, v13, v8);
+        __ vadd_vv (v13, v14, v17);
+        __ vadd_vv (v14, v15, v18);
+        __ vsll_vi (v12, v12, 2);
+        __ vsrl_vi (v15, v8, 4);
+        __ vor_vv  (v15, v12, v15);
+        __ vsll_vi (v8, v8, 4);
+        __ vsrl_vi (v12, v13, 2);
+        __ vor_vv  (v16, v8, v12);
+        __ vsll_vi (v8, v13, 6);
+        __ vor_vv  (v17, v8, v14);
+        __ vsseg3e8_v      (v15, dst);
+        __ sub     (length, length, size);
+        __ sh1add  (failedIdx, size, size);
+        __ add     (dst, dst, failedIdx);
+        __ sh2add  (src, size, src);
+        __ bnez    (length, LBB0_2);
+/*
+__ BIND(LBB0_4);
+        __ li      (a0, 0);
+        __ ret();
+*/
+
+    __ BIND(LBB0_4);
+    __ sub(c_rarg0, dst, dstBackup);
+
+    __ pop_reg(saved_regs, sp);
+    __ ret();
+
+    return (address) start;
+  }
+
+  /**
+   * int j.u.Base64.Decoder.decodeBlock(byte[] src, int sp, int sl, byte[] dst, int dp, boolean isURL, boolean isMIME)
+   *
+   *  Input arguments:
+   *  c_rarg0   - src, source array
+   *  c_rarg1   - sp, src start offset
+   *  c_rarg2   - sl, src end offset
+   *  c_rarg3   - dst, dest array
+   *  c_rarg4   - dp, dst start offset
+   *  c_rarg5   - isURL, Base64 or URL character set
+   *  c_rarg6   - isMIME, Decoding MIME block - unused here
+   */
   address generate_base64_decodeBlock() {
 
     static const uint8_t fromBase64[256] = {
@@ -6021,7 +6163,11 @@ static const int64_t right_3_bits = right_n_bits(3);
     }
 
     if (UseBASE64Intrinsics) {
-      StubRoutines::_base64_decodeBlock = generate_base64_decodeBlock();
+      if (UseBASE64Intrinsics_vrgroup) {
+        StubRoutines::_base64_decodeBlock = generate_base64_decodeBlock_vrgather();
+      } else {
+        StubRoutines::_base64_decodeBlock = generate_base64_decodeBlock();
+      }
     }
 
 #endif // COMPILER2_OR_JVMCI
