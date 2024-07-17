@@ -2248,11 +2248,15 @@ void C2_MacroAssembler::signum_fp_v(VectorRegister dst, VectorRegister one, Basi
   vfsgnj_vv(dst, one, dst, v0_t);
 }
 
-void C2_MacroAssembler::compress_bits_v(Register dst, Register src, Register mask, bool is_long) {
-  Assembler::SEW sew = is_long ? Assembler::e64 : Assembler::e32;
+void C2_MacroAssembler::compress_bits_v(Register dst, Register src, Register mask,
+                                        VectorRegisterGroup vg1, VectorRegisterGroup vg2,
+                                        Assembler::SEW sew) {
   // intrinsic is enabled when MaxVectorSize >= 16
-  Assembler::LMUL lmul = is_long ? Assembler::m4 : Assembler::m2;
-  long len = is_long ? 64 : 32;
+  assert(vgrp_to_lmul(vg1) == vgrp_to_lmul(vg2), "sanity");
+  Assembler::LMUL lmul = vgrp_to_lmul(vg1);
+  VectorRegister vr1 = vg1.as_vreg();
+  VectorRegister vr2 = vg2.as_vreg();
+  long len = sew == Assembler::e64 ? 64 : 32;
 
   // load the src data(in bits) to be compressed.
   vsetivli(x0, 1, sew, Assembler::m1);
@@ -2260,37 +2264,35 @@ void C2_MacroAssembler::compress_bits_v(Register dst, Register src, Register mas
   // reset the src data(in bytes) to zero.
   mv(t0, len);
   vsetvli(x0, t0, Assembler::e8, lmul);
-  vmv_v_i(v4, 0);
+  vmv_v_i(vr1, 0);
   // convert the src data from bits to bytes.
-  vmerge_vim(v4, v4, 1); // v0 as the implicit mask register
+  vmerge_vim(vr1, vr1, 1); // v0 as the implicit mask register
   // reset the dst data(in bytes) to zero.
-  vmv_v_i(v8, 0);
+  vmv_v_i(vr2, 0);
   // load the mask data(in bits).
   vsetivli(x0, 1, sew, Assembler::m1);
   vmv_s_x(v0, mask);
   // compress the src data(in bytes) to dst(in bytes).
   vsetvli(x0, t0, Assembler::e8, lmul);
-  vcompress_vm(v8, v4, v0);
+  vcompress_vm(vr2, vr1, v0);
   // convert the dst data from bytes to bits.
-  vmseq_vi(v0, v8, 1);
+  vmseq_vi(v0, vr2, 1);
   // store result back.
   vsetivli(x0, 1, sew, Assembler::m1);
   vmv_x_s(dst, v0);
 }
 
-void C2_MacroAssembler::compress_bits_i_v(Register dst, Register src, Register mask) {
-  compress_bits_v(dst, src, mask, /* is_long */ false);
-}
-
-void C2_MacroAssembler::compress_bits_l_v(Register dst, Register src, Register mask) {
-  compress_bits_v(dst, src, mask, /* is_long */ true);
-}
-
-void C2_MacroAssembler::expand_bits_v(Register dst, Register src, Register mask, bool is_long) {
-  Assembler::SEW sew = is_long ? Assembler::e64 : Assembler::e32;
+void C2_MacroAssembler::expand_bits_v(Register dst, Register src, Register mask,
+                                      VectorRegisterGroup vg1, VectorRegisterGroup vg2,
+                                      VectorRegisterGroup vg3, Assembler::SEW sew) {
   // intrinsic is enabled when MaxVectorSize >= 16
-  Assembler::LMUL lmul = is_long ? Assembler::m4 : Assembler::m2;
-  long len = is_long ? 64 : 32;
+  assert(vgrp_to_lmul(vg1) == vgrp_to_lmul(vg2), "sanity");
+  assert(vgrp_to_lmul(vg1) == vgrp_to_lmul(vg3), "sanity");
+  Assembler::LMUL lmul = vgrp_to_lmul(vg1);
+  VectorRegister vr1 = vg1.as_vreg();
+  VectorRegister vr2 = vg2.as_vreg();
+  VectorRegister vr3 = vg3.as_vreg();
+  long len = sew == Assembler::e64 ? 64 : 32;
 
   // load the src data(in bits) to be expanded.
   vsetivli(x0, 1, sew, Assembler::m1);
@@ -2298,31 +2300,23 @@ void C2_MacroAssembler::expand_bits_v(Register dst, Register src, Register mask,
   // reset the src data(in bytes) to zero.
   mv(t0, len);
   vsetvli(x0, t0, Assembler::e8, lmul);
-  vmv_v_i(v4, 0);
+  vmv_v_i(vr1, 0);
   // convert the src data from bits to bytes.
-  vmerge_vim(v4, v4, 1); // v0 as implicit mask register
+  vmerge_vim(vr1, vr1, 1); // v0 as implicit mask register
   // reset the dst data(in bytes) to zero.
-  vmv_v_i(v12, 0);
+  vmv_v_i(vr3, 0);
   // load the mask data(in bits).
   vsetivli(x0, 1, sew, Assembler::m1);
   vmv_s_x(v0, mask);
   // expand the src data(in bytes) to dst(in bytes).
   vsetvli(x0, t0, Assembler::e8, lmul);
-  viota_m(v8, v0);
-  vrgather_vv(v12, v4, v8, VectorMask::v0_t); // v0 as implicit mask register
+  viota_m(vr2, v0);
+  vrgather_vv(vr3, vr1, vr2, VectorMask::v0_t); // v0 as implicit mask register
   // convert the dst data from bytes to bits.
-  vmseq_vi(v0, v12, 1);
+  vmseq_vi(v0, vr3, 1);
   // store result back.
   vsetivli(x0, 1, sew, Assembler::m1);
   vmv_x_s(dst, v0);
-}
-
-void C2_MacroAssembler::expand_bits_i_v(Register dst, Register src, Register mask) {
-  expand_bits_v(dst, src, mask, /* is_long */ false);
-}
-
-void C2_MacroAssembler::expand_bits_l_v(Register dst, Register src, Register mask) {
-  expand_bits_v(dst, src, mask, /* is_long */ true);
 }
 
 void C2_MacroAssembler::element_compare(Register a1, Register a2, Register result, Register cnt, Register tmp1, Register tmp2,
@@ -2331,10 +2325,11 @@ void C2_MacroAssembler::element_compare(Register a1, Register a2, Register resul
   Assembler::SEW sew = islatin ? Assembler::e8 : Assembler::e16;
   assert(vgrp_to_lmul(vg1) == vgrp_to_lmul(vg2), "sanity");
   assert(vgrp_to_lmul(vg1) == vgrp_to_lmul(vgs), "sanity");
+  assert(vg1 != vg2, "sanity");
   Assembler::LMUL lmul = vgrp_to_lmul(vg1);
-  VectorRegister vr1 = vg1.start_vreg();
-  VectorRegister vr2 = vg2.start_vreg();
-  VectorRegister vrs = vgs.start_vreg();
+  VectorRegister vr1 = vg1.as_vreg();
+  VectorRegister vr2 = vg2.as_vreg();
+  VectorRegister vrs = vgs.as_vreg();
 
   bind(loop);
   vsetvli(tmp1, cnt, sew, lmul);
@@ -2375,16 +2370,19 @@ void C2_MacroAssembler::string_equals_v(Register a1, Register a2, Register resul
 // cnt: Count in HeapWords
 //
 // base, cnt, v4, v5, v6, v7 and t0 are clobbered.
-void C2_MacroAssembler::clear_array_v(Register base, Register cnt) {
+void C2_MacroAssembler::clear_array_v(Register base, Register cnt, VectorRegisterGroup vg) {
+  VectorRegister vr = vg.as_vreg();
+  Assembler::LMUL lmul = vgrp_to_lmul(vg);
+
   Label loop;
 
   // making zero words
-  vsetvli(t0, cnt, Assembler::e64, Assembler::m4);
-  vxor_vv(v4, v4, v4);
+  vsetvli(t0, cnt, Assembler::e64, lmul);
+  vxor_vv(vr, vr, vr);
 
   bind(loop);
-  vsetvli(t0, cnt, Assembler::e64, Assembler::m4);
-  vse64_v(v4, base);
+  vsetvli(t0, cnt, Assembler::e64, lmul);
+  vse64_v(vr, base);
   sub(cnt, cnt, t0);
   shadd(base, t0, base, t0, 3);
   bnez(cnt, loop);
@@ -2458,29 +2456,30 @@ void C2_MacroAssembler::string_compare_v(Register str1, Register str2, Register 
   // Please check below document for string size distribution statistics.
   // https://cr.openjdk.org/~shade/density/string-density-report.pdf
   if (str1_isL == str2_isL) { // LL or UU
-    // Below construction of v regs and lmul is based on test on 2 different boards,
+    // Below construction of v regs and lmul is based on performance test on 2 different boards,
     // vlen == 128 and vlen == 256 respectively.
-    if (!encLL && MaxVectorSize == 16) { // UU
-      element_compare(str1, str2, zr, cnt2, tmp1, tmp2, vg1, vg2, vg1, encLL, DIFFERENCE);
-    } else { // UU + MaxVectorSize or LL
-      element_compare(str1, str2, zr, cnt2, tmp1, tmp2, vg1, vg2, vg1, encLL, DIFFERENCE);
-    }
+    element_compare(str1, str2, zr, cnt2, tmp1, tmp2, vg1, vg2, vg1, encLL, DIFFERENCE);
 
     j(DONE);
   } else { // LU or UL
     Register strL = encLU ? str1 : str2;
     Register strU = encLU ? str2 : str1;
-    VectorRegister vstr1 = encLU ? v8 : v4;
-    VectorRegister vstr2 = encLU ? v4 : v8;
+    VectorRegister vr1 = vg1.as_vreg();
+    VectorRegister vr2 = vg2.as_vreg();
+    assert(vgrp_to_lmul(vg1) == vgrp_to_lmul(vg2), "sanity");
+    Assembler::LMUL lmul = vgrp_to_lmul(vg1);
+    Assembler::LMUL hl = half_lmul(lmul);
+    VectorRegister vstr1 = encLU ? vr2 : vr1;
+    VectorRegister vstr2 = encLU ? vr1 : vr2;
 
     bind(loop);
-    vsetvli(tmp1, cnt2, Assembler::e8, Assembler::m2);
+    vsetvli(tmp1, cnt2, Assembler::e8, hl);
     vle8_v(vstr1, strL);
-    vsetvli(tmp1, cnt2, Assembler::e16, Assembler::m4);
+    vsetvli(tmp1, cnt2, Assembler::e16, lmul);
     vzext_vf2(vstr2, vstr1);
     vle16_v(vstr1, strU);
-    vmsne_vv(v4, vstr2, vstr1);
-    vfirst_m(tmp2, v4);
+    vmsne_vv(vr1, vstr2, vstr1);
+    vfirst_m(tmp2, vr1);
     bgez(tmp2, DIFFERENCE);
     sub(cnt2, cnt2, tmp1);
     add(strL, strL, tmp1);
@@ -2500,17 +2499,21 @@ void C2_MacroAssembler::string_compare_v(Register str1, Register str2, Register 
   bind(DONE);
 }
 
-void C2_MacroAssembler::byte_array_inflate_v(Register src, Register dst, Register len, Register tmp) {
+void C2_MacroAssembler::byte_array_inflate_v(Register src, Register dst, Register len, Register tmp, VectorRegisterGroup vg) {
   Label loop;
   assert_different_registers(src, dst, len, tmp, t0);
 
+  VectorRegister vr = vg.as_vreg();
+  Assembler::LMUL lmul = vgrp_to_lmul(vg);
+  Assembler::LMUL hl = half_lmul(lmul);
+
   BLOCK_COMMENT("byte_array_inflate_v {");
   bind(loop);
-  vsetvli(tmp, len, Assembler::e8, Assembler::m2);
-  vle8_v(v6, src);
-  vsetvli(t0, len, Assembler::e16, Assembler::m4);
-  vzext_vf2(v4, v6);
-  vse16_v(v4, dst);
+  vsetvli(tmp, len, Assembler::e8, hl);
+  vle8_v(vr, src);
+  vsetvli(t0, len, Assembler::e16, lmul);
+  vzext_vf2(vr, vr);
+  vse16_v(vr, dst);
   sub(len, len, tmp);
   add(src, src, tmp);
   shadd(dst, tmp, dst, tmp, 1);
@@ -2575,8 +2578,11 @@ void C2_MacroAssembler::encode_iso_array_v(Register src, Register dst, Register 
   BLOCK_COMMENT("} encode_iso_array_v");
 }
 
-void C2_MacroAssembler::count_positives_v(Register ary, Register len, Register result, Register tmp) {
+void C2_MacroAssembler::count_positives_v(Register ary, Register len, Register result, Register tmp,
+                                          VectorRegisterGroup vg) {
   Label LOOP, SET_RESULT, DONE;
+  VectorRegister vr = vg.as_vreg();
+  Assembler::LMUL lmul = vgrp_to_lmul(vg);
 
   BLOCK_COMMENT("count_positives_v {");
   assert_different_registers(ary, len, result, tmp);
@@ -2584,10 +2590,10 @@ void C2_MacroAssembler::count_positives_v(Register ary, Register len, Register r
   mv(result, zr);
 
   bind(LOOP);
-  vsetvli(t0, len, Assembler::e8, Assembler::m4);
-  vle8_v(v4, ary);
-  vmslt_vx(v4, v4, zr);
-  vfirst_m(tmp, v4);
+  vsetvli(t0, len, Assembler::e8, lmul);
+  vle8_v(vr, ary);
+  vmslt_vx(vr, vr, zr);
+  vfirst_m(tmp, vr);
   bgez(tmp, SET_RESULT);
   // if tmp == -1, all bytes are positive
   add(result, result, t0);
@@ -2608,16 +2614,19 @@ void C2_MacroAssembler::count_positives_v(Register ary, Register len, Register r
 void C2_MacroAssembler::string_indexof_char_v(Register str1, Register cnt1,
                                               Register ch, Register result,
                                               Register tmp1, Register tmp2,
-                                              bool isL) {
+                                              bool isL, VectorRegisterGroup vg) {
+  VectorRegister vr = vg.as_vreg();
+  Assembler::LMUL lmul = vgrp_to_lmul(vg);
+
   mv(result, zr);
 
   Label loop, MATCH, DONE;
   Assembler::SEW sew = isL ? Assembler::e8 : Assembler::e16;
   bind(loop);
-  vsetvli(tmp1, cnt1, sew, Assembler::m4);
-  vlex_v(v4, str1, sew);
-  vmseq_vx(v4, v4, ch);
-  vfirst_m(tmp2, v4);
+  vsetvli(tmp1, cnt1, sew, lmul);
+  vlex_v(vr, str1, sew);
+  vmseq_vx(vr, vr, ch);
+  vfirst_m(tmp2, vr);
   bgez(tmp2, MATCH); // if equal, return index
 
   add(result, result, tmp1);

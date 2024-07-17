@@ -3570,7 +3570,7 @@ instruct vstring_equalsL(iRegP_R11 str1, iRegP_R13 str2, iRegI_R14 cnt, iRegI_R1
     // Count is in 8-bit bytes; non-Compact chars are 16 bits.
     __ string_equals_v($str1$$Register, $str2$$Register,
                        $result$$Register, $cnt$$Register,
-                      $v2m2$$VectorRegisterGroup, $v4m2$$VectorRegisterGroup);
+                       $v2m2$$VectorRegisterGroup, $v4m2$$VectorRegisterGroup);
   %}
   ins_pipe(pipe_class_memory);
 %}
@@ -3712,15 +3712,16 @@ instruct vstring_compareLU(iRegP_R11 str1, iRegI_R12 cnt1, iRegP_R13 str2, iRegI
 
 // fast byte[] to char[] inflation
 instruct vstring_inflate(Universe dummy, iRegP_R10 src, iRegP_R11 dst, iRegI_R12 len,
-                         vReg_V4 v4, vReg_V5 v5, vReg_V6 v6, vReg_V7 v7, iRegLNoSp tmp)
+                         vReg_V4_m4 v4m4, iRegLNoSp tmp)
 %{
   predicate(UseRVV);
   match(Set dummy (StrInflatedCopy src (Binary dst len)));
-  effect(TEMP v4, TEMP v5, TEMP v6, TEMP v7, TEMP tmp, USE_KILL src, USE_KILL dst, USE_KILL len);
+  effect(TEMP v4m4, TEMP tmp, USE_KILL src, USE_KILL dst, USE_KILL len);
 
   format %{ "String Inflate $src,$dst" %}
   ins_encode %{
-    __ byte_array_inflate_v($src$$Register, $dst$$Register, $len$$Register, $tmp$$Register);
+    __ byte_array_inflate_v($src$$Register, $dst$$Register, $len$$Register, $tmp$$Register,
+                            $v4m4$$VectorRegisterGroup);
   %}
   ins_pipe(pipe_class_memory);
 %}
@@ -3776,15 +3777,16 @@ instruct vstring_compress(iRegP_R12 src, iRegP_R11 dst, iRegI_R13 len, iRegI_R10
 %}
 
 instruct vcount_positives(iRegP_R11 ary, iRegI_R12 len, iRegI_R10 result,
-                          vReg_V4 v4, vReg_V5 v5, vReg_V6 v6, vReg_V7 v7, iRegLNoSp tmp)
+                          vReg_V4_m4 v4m4, iRegLNoSp tmp)
 %{
   predicate(UseRVV);
   match(Set result (CountPositives ary len));
-  effect(TEMP_DEF result, USE_KILL ary, USE_KILL len, TEMP v4, TEMP v5, TEMP v6, TEMP v7, TEMP tmp);
+  effect(TEMP_DEF result, USE_KILL ary, USE_KILL len, TEMP v4m4, TEMP tmp);
 
   format %{ "count positives byte[] $ary, $len -> $result" %}
   ins_encode %{
-    __ count_positives_v($ary$$Register, $len$$Register, $result$$Register, $tmp$$Register);
+    __ count_positives_v($ary$$Register, $len$$Register, $result$$Register,
+                         $tmp$$Register, $v4m4$$VectorRegisterGroup);
   %}
 
   ins_pipe(pipe_class_memory);
@@ -3792,19 +3794,19 @@ instruct vcount_positives(iRegP_R11 ary, iRegI_R12 len, iRegI_R10 result,
 
 instruct vstringU_indexof_char(iRegP_R11 str1, iRegI_R12 cnt1, iRegI_R13 ch,
                                iRegI_R10 result, iRegINoSp tmp1, iRegINoSp tmp2,
-                               vReg_V4 v4, vReg_V5 v5, vReg_V6 v6, vReg_V7 v7)
+                               vReg_V4_m4 v4m4)
 %{
   predicate(UseRVV && (((StrIndexOfCharNode*)n)->encoding() == StrIntrinsicNode::U));
   match(Set result (StrIndexOfChar (Binary str1 cnt1) ch));
   effect(TEMP_DEF result, USE_KILL str1, USE_KILL cnt1, USE_KILL ch,
-         TEMP tmp1, TEMP tmp2, TEMP v4, TEMP v5, TEMP v6, TEMP v7);
+         TEMP tmp1, TEMP tmp2, TEMP v4m4);
 
   format %{ "StringUTF16 IndexOf char[] $str1, $cnt1, $ch -> $result" %}
 
   ins_encode %{
     __ string_indexof_char_v($str1$$Register, $cnt1$$Register, $ch$$Register,
                              $result$$Register, $tmp1$$Register, $tmp2$$Register,
-                             false /* isL */);
+                             false /* isL */, $v4m4$$VectorRegisterGroup);
   %}
 
   ins_pipe(pipe_class_memory);
@@ -3812,19 +3814,19 @@ instruct vstringU_indexof_char(iRegP_R11 str1, iRegI_R12 cnt1, iRegI_R13 ch,
 
 instruct vstringL_indexof_char(iRegP_R11 str1, iRegI_R12 cnt1, iRegI_R13 ch,
                                iRegI_R10 result, iRegINoSp tmp1, iRegINoSp tmp2,
-                               vReg_V4 v4, vReg_V5 v5, vReg_V6 v6, vReg_V7 v7)
+                               vReg_V4_m4 v4m4)
 %{
   predicate(UseRVV && (((StrIndexOfCharNode*)n)->encoding() == StrIntrinsicNode::L));
   match(Set result (StrIndexOfChar (Binary str1 cnt1) ch));
   effect(TEMP_DEF result, USE_KILL str1, USE_KILL cnt1, USE_KILL ch,
-         TEMP tmp1, TEMP tmp2, TEMP v4, TEMP v5, TEMP v6, TEMP v7);
+         TEMP tmp1, TEMP tmp2, TEMP v4m4);
 
   format %{ "StringLatin1 IndexOf char[] $str1, $cnt1, $ch -> $result" %}
 
   ins_encode %{
     __ string_indexof_char_v($str1$$Register, $cnt1$$Register, $ch$$Register,
                              $result$$Register, $tmp1$$Register, $tmp2$$Register,
-                             true /* isL */);
+                             true /* isL */, $v4m4$$VectorRegisterGroup);
   %}
 
   ins_pipe(pipe_class_memory);
@@ -3832,16 +3834,16 @@ instruct vstringL_indexof_char(iRegP_R11 str1, iRegI_R12 cnt1, iRegI_R13 ch,
 
 // clearing of an array
 instruct vclearArray_reg_reg(iRegL_R29 cnt, iRegP_R28 base, Universe dummy,
-                             vReg_V4 v4, vReg_V5 v5, vReg_V6 v6, vReg_V7 v7)
+                             vReg_V4_m4 v4m4)
 %{
   predicate(!UseBlockZeroing && UseRVV);
   match(Set dummy (ClearArray cnt base));
-  effect(USE_KILL cnt, USE_KILL base, TEMP v4, TEMP v5, TEMP v6, TEMP v7);
+  effect(USE_KILL cnt, USE_KILL base, TEMP v4m4);
 
   format %{ "ClearArray $cnt, $base\t#@clearArray_reg_reg" %}
 
   ins_encode %{
-    __ clear_array_v($base$$Register, $cnt$$Register);
+    __ clear_array_v($base$$Register, $cnt$$Register, $v4m4$$VectorRegisterGroup);
   %}
 
   ins_pipe(pipe_class_memory);
@@ -3850,52 +3852,25 @@ instruct vclearArray_reg_reg(iRegL_R29 cnt, iRegP_R28 base, Universe dummy,
 // CompressBits of Long & Integer
 
 instruct compressBitsI(iRegINoSp dst, iRegIorL2I src, iRegIorL2I mask, vRegMask_V0 v0,
-                       vReg_V4 v4, vReg_V5 v5, vReg_V8 v8, vReg_V9 v9) %{
+                       vReg_V2_m2 v2m2, vReg_V4_m2 v4m2) %{
   match(Set dst (CompressBits src mask));
-  effect(TEMP v0, TEMP v4, TEMP v5, TEMP v8, TEMP v9);
-  format %{ "vsetivli x0, 1, e32, m1, tu, mu\t#@compressBitsI\n\t"
-            "vmv.s.x $v0, $src\n\t"
-            "mv t0, 32\n\t"
-            "vsetvli x0, t0, e8, m2, tu, mu\n\t"
-            "vmv.v.i $v4, 0\n\t"
-            "vmerge.vim $v4, $v4, 1, $v0\n\t"
-            "vmv.v.i $v8, 0\n\t"
-            "vsetivli x0, 1, e32, m1, tu, mu\n\t"
-            "vmv.s.x $v0, $mask\n\t"
-            "vsetvli x0, t0, e8, m2, tu, mu\n\t"
-            "vcompress.vm $v8, $v4, $v0\n\t"
-            "vmseq.vi $v0, $v8, 1\n\t"
-            "vsetivli x0, 1, e32, m1, tu, mu\n\t"
-            "vmv.x.s $dst, $v0\t#@compressBitsI\n\t"
-          %}
+  effect(TEMP v0, TEMP v2m2, TEMP v4m2);
+  format %{ "compressBitsI $dst, $src, $mask \t\n" %}
   ins_encode %{
-    __ compress_bits_i_v(as_Register($dst$$reg), as_Register($src$$reg), as_Register($mask$$reg));
+    __ compress_bits_v(as_Register($dst$$reg), as_Register($src$$reg), as_Register($mask$$reg),
+                       $v2m2$$VectorRegisterGroup, $v4m2$$VectorRegisterGroup, Assembler::e32);
   %}
   ins_pipe(pipe_slow);
 %}
 
 instruct compressBitsL(iRegLNoSp dst, iRegL src, iRegL mask, vRegMask_V0 v0,
-                       vReg_V4 v4, vReg_V5 v5, vReg_V6 v6, vReg_V7 v7,
-                       vReg_V8 v8, vReg_V9 v9, vReg_V10 v10, vReg_V11 v11) %{
+                       vReg_V4_m4 v4m4, vReg_V8_m4 v8m4) %{
   match(Set dst (CompressBits src mask));
-  effect(TEMP v0, TEMP v4, TEMP v5, TEMP v6, TEMP v7, TEMP v8, TEMP v9, TEMP v10, TEMP v11);
-  format %{ "vsetivli x0, 1, e64, m1, tu, mu\t#@compressBitsL\n\t"
-            "vmv.s.x $v0, $src\n\t"
-            "mv t0, 64\n\t"
-            "vsetvli x0, t0, e8, m4, tu, mu\n\t"
-            "vmv.v.i $v4, 0\n\t"
-            "vmerge.vim $v4, $v4, 1, $v0\n\t"
-            "vmv.v.i $v8, 0\n\t"
-            "vsetivli x0, 1, e64, m1, tu, mu\n\t"
-            "vmv.s.x $v0, $mask\n\t"
-            "vsetvli x0, t0, e8, m4, tu, mu\n\t"
-            "vcompress.vm $v8, $v4, $v0\n\t"
-            "vmseq.vi $v0, $v8, 1\n\t"
-            "vsetivli x0, 1, e64, m1, tu, mu\n\t"
-            "vmv.x.s $dst, $v0\t#@compressBitsL\n\t"
-          %}
+  effect(TEMP v0, TEMP v4m4, TEMP v8m4);
+  format %{ "compressBitsL $dst, $src, $mask \t\n" %}
   ins_encode %{
-    __ compress_bits_l_v(as_Register($dst$$reg), as_Register($src$$reg), as_Register($mask$$reg));
+    __ compress_bits_v(as_Register($dst$$reg), as_Register($src$$reg), as_Register($mask$$reg),
+                       $v4m4$$VectorRegisterGroup, $v8m4$$VectorRegisterGroup, Assembler::e64);
   %}
   ins_pipe(pipe_slow);
 %}
@@ -3903,56 +3878,25 @@ instruct compressBitsL(iRegLNoSp dst, iRegL src, iRegL mask, vRegMask_V0 v0,
 // ExpandBits of Long & Integer
 
 instruct expandBitsI(iRegINoSp dst, iRegIorL2I src, iRegIorL2I mask, vRegMask_V0 v0,
-                     vReg_V4 v4, vReg_V5 v5, vReg_V8 v8, vReg_V9 v9, vReg_V12 v12, vReg_V13 v13) %{
+                     vReg_V2_m2 v2m2, vReg_V4_m2 v4m2, vReg_V6_m2 v6m2) %{
   match(Set dst (ExpandBits src mask));
-  effect(TEMP v0, TEMP v4, TEMP v5, TEMP v8, TEMP v9, TEMP v12, TEMP v13);
-  format %{ "vsetivli x0, 1, e32, m1, tu, mu\t#@expandBitsI\n\t"
-            "vmv.s.x $v0, $src\n\t"
-            "mv t0, 32\n\t"
-            "vsetvli x0, t0, e8, m2, tu, mu\n\t"
-            "vmv.v.i $v4, 0\n\t"
-            "vmerge.vim $v4, $v4, 1, $v0\n\t"
-            "vmv.v.i $v12, 0\n\t"
-            "vsetivli x0, 1, e32, m1, tu, mu\n\t"
-            "vmv.s.x $v0, $mask\n\t"
-            "vsetvli x0, t0, e8, m2, tu, mu\n\t"
-            "viota.m $v8, $v0\n\t"
-            "vrgather.vv $v12, $v4, $v8, $v0.t\n\t"
-            "vmseq.vi $v0, $v12, 1\n\t"
-            "vsetivli x0, 1, e32, m1, tu, mu\n\t"
-            "vmv.x.s $dst, $v0\t#@expandBitsI\n\t"
-          %}
+  effect(TEMP v0, TEMP v2m2, TEMP v4m2, TEMP v6m2);
+  format %{ "expandBitsI $dst, $src, $mask \t\n" %}
   ins_encode %{
-    __ expand_bits_i_v(as_Register($dst$$reg), as_Register($src$$reg), as_Register($mask$$reg));
+    __ expand_bits_v(as_Register($dst$$reg), as_Register($src$$reg), as_Register($mask$$reg),
+                     $v2m2$$VectorRegisterGroup, $v4m2$$VectorRegisterGroup, $v6m2$$VectorRegisterGroup, Assembler::e32);
   %}
   ins_pipe(pipe_slow);
 %}
 
 instruct expandBitsL(iRegLNoSp dst, iRegL src, iRegL mask, vRegMask_V0 v0,
-                      vReg_V4 v4, vReg_V5 v5, vReg_V6 v6, vReg_V7 v7,
-                      vReg_V8 v8, vReg_V9 v9, vReg_V10 v10, vReg_V11 v11,
-                      vReg_V12 v12, vReg_V13 v13, vReg_V14 v14, vReg_V15 v15) %{
+                      vReg_V4_m4 v4m4, vReg_V8_m4 v8m4, vReg_V12_m4 v12m4) %{
   match(Set dst (ExpandBits src mask));
-  effect(TEMP v0, TEMP v4, TEMP v5, TEMP v6, TEMP v7, TEMP v8, TEMP v9, TEMP v10, TEMP v11,
-         TEMP v12, TEMP v13, TEMP v14, TEMP v15);
-  format %{ "vsetivli x0, 1, e64, m1, tu, mu\t#@expandBitsL\n\t"
-            "vmv.s.x $v0, $src\n\t"
-            "mv t0, 64\n\t"
-            "vsetvli x0, t0, e8, m4, tu, mu\n\t"
-            "vmv.v.i $v4, 0\n\t"
-            "vmerge.vim $v4, $v4, 1, $v0\n\t"
-            "vmv.v.i $v12, 0\n\t"
-            "vsetivli x0, 1, e64, m1, tu, mu\n\t"
-            "vmv.s.x $v0, $mask\n\t"
-            "vsetvli x0, t0, e8, m4, tu, mu\n\t"
-            "viota.m $v8, $v0\n\t"
-            "vrgather.vv $v12, $v4, $v8, $v0.t\n\t"
-            "vmseq.vi $v0, $v12, 1\n\t"
-            "vsetivli x0, 1, e64, m1, tu, mu\n\t"
-            "vmv.x.s $dst, $v0\t#@expandBitsL\n\t"
-          %}
+  effect(TEMP v0, TEMP v4m4, TEMP v8m4, TEMP v12m4);
+  format %{ "expandBitsL $dst, $src, $mask \t\n" %}
   ins_encode %{
-    __ expand_bits_l_v(as_Register($dst$$reg), as_Register($src$$reg), as_Register($mask$$reg));
+    __ expand_bits_v(as_Register($dst$$reg), as_Register($src$$reg), as_Register($mask$$reg),
+                     $v4m4$$VectorRegisterGroup, $v8m4$$VectorRegisterGroup, $v12m4$$VectorRegisterGroup, Assembler::e64);
   %}
   ins_pipe(pipe_slow);
 %}

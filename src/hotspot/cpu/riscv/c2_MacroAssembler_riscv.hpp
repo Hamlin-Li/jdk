@@ -38,9 +38,6 @@
                        VectorRegisterGroup vg1, VectorRegisterGroup vg2, VectorRegisterGroup vgs,
                        bool is_latin, Label& DONE);
 
-  void compress_bits_v(Register dst, Register src, Register mask, bool is_long);
-  void expand_bits_v(Register dst, Register src, Register mask, bool is_long);
-
  public:
   // Code used by cmpFastLock and cmpFastUnlock mach instructions in .ad file.
   void fast_lock(Register object, Register box, Register tmp1, Register tmp2, Register tmp3);
@@ -180,11 +177,13 @@
   // intrinsic methods implemented by rvv instructions
 
   // compress bits, i.e. j.l.Integer/Long::compress.
-  void compress_bits_i_v(Register dst, Register src, Register mask);
-  void compress_bits_l_v(Register dst, Register src, Register mask);
+  void compress_bits_v(Register dst, Register src, Register mask,
+                       VectorRegisterGroup vg1, VectorRegisterGroup vg2,
+                       Assembler::SEW sew);
   // expand bits, i.e. j.l.Integer/Long::expand.
-  void expand_bits_i_v(Register dst, Register src, Register mask);
-  void expand_bits_l_v(Register dst, Register src, Register mask);
+  void expand_bits_v(Register dst, Register src, Register mask,
+                     VectorRegisterGroup vg1, VectorRegisterGroup vg2, VectorRegisterGroup vg3,
+                      Assembler::SEW sew);
 
   void float16_to_float_v(VectorRegister dst, VectorRegister src, uint vector_length);
   void float_to_float16_v(VectorRegister dst, VectorRegister src, VectorRegister vtmp, Register tmp, uint vector_length);
@@ -205,10 +204,11 @@
                         int encForm,
                         VectorRegisterGroup vg1, VectorRegisterGroup vg2);
 
-  void clear_array_v(Register base, Register cnt);
+  void clear_array_v(Register base, Register cnt, VectorRegisterGroup vg);
 
   void byte_array_inflate_v(Register src, Register dst,
-                            Register len, Register tmp);
+                            Register len, Register tmp,
+                            VectorRegisterGroup vg);
 
   void char_array_compress_v(Register src, Register dst,
                             Register len, Register result,
@@ -219,12 +219,13 @@
                           Register tmp, bool ascii);
 
   void count_positives_v(Register ary, Register len,
-                        Register result, Register tmp);
+                        Register result, Register tmp,
+                        VectorRegisterGroup vg);
 
   void string_indexof_char_v(Register str1, Register cnt1,
                             Register ch, Register result,
                             Register tmp1, Register tmp2,
-                            bool isL);
+                            bool isL, VectorRegisterGroup vg);
 
   void minmax_fp_v(VectorRegister dst,
                   VectorRegister src1, VectorRegister src2,

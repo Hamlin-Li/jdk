@@ -1156,6 +1156,15 @@ static Assembler::LMUL vgrp_to_lmul(VectorRegisterGroup vgrp) {
   }
 }
 
+static Assembler::LMUL half_lmul(Assembler::LMUL lmul) {
+  switch(lmul) {
+    case m2: return m1;
+    case m4: return m2;
+    case m8: return m4;
+    default: ShouldNotReachHere();
+  }
+}
+
 static Assembler::SEW elembytes_to_sew(int ebytes) {
   assert(ebytes > 0 && ebytes <= 8, "unsupported element size");
   return (Assembler::SEW) exact_log2(ebytes);
