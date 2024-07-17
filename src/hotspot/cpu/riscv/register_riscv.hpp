@@ -392,6 +392,9 @@ public:
   VectorRegister as_vreg() {
     return as_VectorRegister(_encoding);
   }
+  VectorRegister as_half_vreg() {
+    return as_VectorRegister(_encoding + _lmul/2);
+  }
   int lmul() {
     return _lmul;
   }

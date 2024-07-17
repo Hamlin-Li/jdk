@@ -2499,21 +2499,23 @@ void C2_MacroAssembler::string_compare_v(Register str1, Register str2, Register 
   bind(DONE);
 }
 
-void C2_MacroAssembler::byte_array_inflate_v(Register src, Register dst, Register len, Register tmp, VectorRegisterGroup vg) {
+void C2_MacroAssembler::byte_array_inflate_v(Register src, Register dst, Register len, Register tmp,
+                                             VectorRegisterGroup vg) {
   Label loop;
   assert_different_registers(src, dst, len, tmp, t0);
 
-  VectorRegister vr = vg.as_vreg();
+  VectorRegister vr1 = vg.as_vreg();
+  VectorRegister vr2 = vg.as_half_vreg();
   Assembler::LMUL lmul = vgrp_to_lmul(vg);
   Assembler::LMUL hl = half_lmul(lmul);
 
   BLOCK_COMMENT("byte_array_inflate_v {");
   bind(loop);
   vsetvli(tmp, len, Assembler::e8, hl);
-  vle8_v(vr, src);
+  vle8_v(vr2, src);
   vsetvli(t0, len, Assembler::e16, lmul);
-  vzext_vf2(vr, vr);
-  vse16_v(vr, dst);
+  vzext_vf2(vr1, vr2);
+  vse16_v(vr1, dst);
   sub(len, len, tmp);
   add(src, src, tmp);
   shadd(dst, tmp, dst, tmp, 1);
