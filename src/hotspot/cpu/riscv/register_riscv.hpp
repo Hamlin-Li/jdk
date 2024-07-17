@@ -374,22 +374,33 @@ constexpr VectorRegister v31    = as_VectorRegister(31);
 
 class VectorRegisterGroup {
   int _encoding;
+  int _lmul;
 
-  constexpr explicit VectorRegisterGroup(int encoding) : _encoding(encoding) {}
+  constexpr explicit VectorRegisterGroup(int encoding, int lmul = 0) : _encoding(encoding), _lmul(lmul) {}
 
- public:
-  inline constexpr friend VectorRegisterGroup as_VectorRegisterGroup(int encoding);
-
- constexpr VectorRegisterGroup() : _encoding(-1) {
-    assert(false, "must");
-    // tty->print_cr("=========== VectorRegisterGroup()");
-  } // vnoreg_grp
-
+public:
   enum {
     number_of_registers    = 32,
     max_slots_per_register = 4
   };
 
+  inline constexpr friend VectorRegisterGroup as_VectorRegisterGroup(int encoding, int lmul);
+
+  VectorRegister start_vreg() {
+    tty->print_cr("=========== start_vreg, encoding: %d, lmul: %d", _encoding, _lmul);
+    return as_VectorRegister(_encoding);
+  }
+  int lmul() {
+    return _lmul; // just for temporary demo
+  }
+  // Assembler::LMUL lmul() { return Assembler::m2;}
+/*
+ constexpr VectorRegisterGroup() : _encoding(-1) {
+    assert(false, "must");
+    // tty->print_cr("=========== VectorRegisterGroup()");
+  } // vnoreg_grp
+*/
+/*
   class VectorRegisterGroupImpl: public AbstractRegisterImpl {
     friend class VectorRegisterGroup;
 
@@ -397,42 +408,26 @@ class VectorRegisterGroup {
 
    public:
     // accessors
-    constexpr int raw_encoding() const { return checked_cast<int>(this - first()); }
-    constexpr int     encoding() const { assert(is_valid(), "invalid register, %d", raw_encoding()); return raw_encoding(); }
-    constexpr bool    is_valid() const { return 0 <= raw_encoding() && raw_encoding() < number_of_registers; }
+    // constexpr int raw_encoding() const { return checked_cast<int>(this - first()); }
+    // constexpr int     encoding() const { assert(is_valid(), "invalid register, %d", raw_encoding()); return raw_encoding(); }
+    // constexpr bool    is_valid() const { return 0 <= raw_encoding() && raw_encoding() < number_of_registers; }
 
     // derived registers, offsets, and addresses
     inline VectorRegisterGroup successor() const;
 
-    VMReg as_VMReg() const;
+    // VMReg as_VMReg() const;
 
-    const char* name() const;
+    // const char* name() const;
   };
 
+private:
   int operator==(const VectorRegisterGroup r) const { return _encoding == r._encoding; }
   int operator!=(const VectorRegisterGroup r) const { return _encoding != r._encoding; }
-
-  constexpr const VectorRegisterGroupImpl* operator->() const { return VectorRegisterGroupImpl::first() + _encoding; }
-
-  VectorRegister start_vreg() {
-    tty->print_cr("=========== start_vreg: %d, %d", _encoding >> 5, _encoding & 0x1f);
-    return as_VectorRegister(_encoding & 0x1f);
-  }
-  /*
-  int group_len() {
-    return 2; // just for temporary demo
-  }*/
-  // Assembler::LMUL lmul() { return Assembler::m2;}
+*/
 };
 
-extern VectorRegisterGroup::VectorRegisterGroupImpl all_VectorRegisterGroupImpls[VectorRegisterGroup::number_of_registers + 1] INTERNAL_VISIBILITY;
 
-inline constexpr const VectorRegisterGroup::VectorRegisterGroupImpl* VectorRegisterGroup::VectorRegisterGroupImpl::first() {
-  return all_VectorRegisterGroupImpls + 1;
-}
-
-
-inline constexpr VectorRegisterGroup as_VectorRegisterGroup(int encoding) {
+inline constexpr VectorRegisterGroup as_VectorRegisterGroup(int encoding, int lmul) {
   // tty->print_cr("=========== as_VectorRegisterGroup: %d", encoding);
   // encoding -= 32;
   if (false) {
@@ -442,21 +437,26 @@ inline constexpr VectorRegisterGroup as_VectorRegisterGroup(int encoding) {
       return VectorRegisterGroup(encoding);
     }
   } else {
+    lmul /= VectorRegisterGroup::max_slots_per_register;
+    if (lmul == 0) {
+      return VectorRegisterGroup(-1);
+    }
     if (0 <= encoding && encoding < VectorRegisterGroup::number_of_registers) {
-      return VectorRegisterGroup(encoding);
+      return VectorRegisterGroup(encoding, lmul);
     }
   }
   return VectorRegisterGroup(-1); // just for temporary demo
 }
 
-constexpr VectorRegisterGroup vnoreg_grp = as_VectorRegisterGroup(-1);
+/*
+constexpr VectorRegisterGroup vnoreg_grp = as_VectorRegisterGroup(-1, 0);
  // constexpr VectorRegisterGroup v2m2    = as_VectorRegisterGroup((1 << 5) + 2); // (mi << 5) + vi
  // constexpr VectorRegisterGroup v4m2    = as_VectorRegisterGroup((1 << 5) + 4);
  // constexpr VectorRegisterGroup v4m4    = as_VectorRegisterGroup((2 << 5) + 4);
  constexpr VectorRegisterGroup v2m2    = as_VectorRegisterGroup(0);
  constexpr VectorRegisterGroup v4m2    = as_VectorRegisterGroup(1);
  constexpr VectorRegisterGroup v4m4    = as_VectorRegisterGroup(1);
-
+*/
 
 
 // Need to know the total number of registers of all sorts for SharedInfo.

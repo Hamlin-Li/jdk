@@ -1148,7 +1148,12 @@ enum VTA {
 };
 
 static Assembler::LMUL vgrp_to_lmul(VectorRegisterGroup vgrp) {
-  return m2; // just for temporary demo
+  switch(vgrp.lmul()) {
+    case 2: return m2;
+    case 4: return m4;
+    case 8: return m8;
+    default: ShouldNotReachHere();
+  }
 }
 
 static Assembler::SEW elembytes_to_sew(int ebytes) {

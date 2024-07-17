@@ -84,6 +84,7 @@ public:
   virtual int  reg(PhaseRegAlloc *ra_, const Node *node)   const;
   // input register lookup, corresponding to ext_format
   virtual int  reg(PhaseRegAlloc *ra_, const Node *node, int idx)   const;
+  virtual int  reg_vrg(PhaseRegAlloc *ra_, const Node *node, int idx)   const;
 
   // helpers for MacroAssembler generation from ADLC
   Register  as_Register(PhaseRegAlloc *ra_, const Node *node)   const {
@@ -141,11 +142,28 @@ public:
   VectorRegister as_VectorRegister(PhaseRegAlloc *ra_, const Node *node, int idx) const {
     return ::as_VectorRegister(reg(ra_, node, idx));
   }
+  /*
   VectorRegisterGroup as_VectorRegisterGroup(PhaseRegAlloc *ra_, const Node *node) const {
+    assert(false);
     return ::as_VectorRegisterGroup(reg(ra_, node));
-  }
+  }*/
   VectorRegisterGroup as_VectorRegisterGroup(PhaseRegAlloc *ra_, const Node *node, int idx) const {
-    return ::as_VectorRegisterGroup(reg(ra_, node, idx));
+    const Node * n = node->in(idx);
+    tty->print_cr("============ as_VectorRegisterGroup: %d", n->_idx);
+    n->dump();
+    n->out_RegMask().print();
+    int encoding = reg_vrg(ra_, node, idx);
+    tty->print_cr("============ encoding: %d", encoding);
+    // return ::as_VectorRegisterGroup(encoding);
+    const RegMask& rm = n->out_RegMask();
+    int first = rm.find_first_elem();
+    int last = rm.find_last_elem();
+    int lmul = last - first + 1;
+    if (first == OptoReg::Bad || last == OptoReg::Bad) {
+      encoding = -1;
+      lmul = 0;
+    }
+    return ::as_VectorRegisterGroup(encoding, lmul);
   }
 #endif
 #if defined(AARCH64)
