@@ -135,13 +135,6 @@ public:
   }
 #endif
 #if defined(RISCV64)
-  VectorRegister as_VectorRegister(PhaseRegAlloc *ra_, const Node *node) const {
-    return ::as_VectorRegister(reg(ra_, node));
-  }
-  VectorRegister as_VectorRegister(PhaseRegAlloc *ra_, const Node *node, int idx) const {
-    return ::as_VectorRegister(reg(ra_, node, idx));
-  }
-
   VectorRegisterGroup as_VectorRegisterGroup(PhaseRegAlloc *ra_, const Node *node, int idx) const {
     int encoding = reg(ra_, node, idx);
     const RegMask& rm = node->in(idx)->out_RegMask();
