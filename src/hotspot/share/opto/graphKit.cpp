@@ -1092,7 +1092,6 @@ bool GraphKit::compute_stack_effects(int& inputs, int& depth) {
 
   case Bytecodes::_invokevirtual:
   case Bytecodes::_invokespecial:
-  case Bytecodes::_invokestatic:
   case Bytecodes::_invokedynamic:
   case Bytecodes::_invokeinterface:
     {
@@ -1103,6 +1102,24 @@ bool GraphKit::compute_stack_effects(int& inputs, int& depth) {
       inputs   = declared_signature->arg_size_for_bc(code);
       int size = declared_signature->return_type()->size();
       depth = size - inputs;
+    }
+    break;
+  case Bytecodes::_invokestatic:
+    {
+      bool ignored_will_link;
+      ciSignature* declared_signature = nullptr;
+      ciMethod* ignored_callee = method()->get_method_at_bci(bci(), ignored_will_link, &declared_signature);
+      assert(declared_signature != nullptr, "cannot be null");
+      inputs   = declared_signature->arg_size_for_bc(code);
+      int size = declared_signature->return_type()->size();
+      depth = size - inputs;
+      tty->print_cr("========== declared_signature, size: %d, inputs: %d", size, inputs);
+      tty->print("        ");
+      ignored_callee->print();
+      tty->print_cr("");
+      tty->print("       ");
+      declared_signature->print();
+      tty->print_cr("");
     }
     break;
 

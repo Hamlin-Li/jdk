@@ -34,6 +34,7 @@
 
 class PhaseTransform;
 typedef const Pair<Node*, jint> ConstAddOperands;
+typedef const Pair<Node*, jlong> ConstAddOperandsL;
 
 //------------------------------AddNode----------------------------------------
 // Classic Add functionality.  This covers all the usual 'add' behaviors for
@@ -262,6 +263,7 @@ private:
   static Node* build_min_max(Node* a, Node* b, bool is_max, bool is_unsigned, const Type* t, PhaseGVN& gvn);
   static Node* build_min_max_diff_with_zero(Node* a, Node* b, bool is_max, const Type* t, PhaseGVN& gvn);
   Node* extract_add(PhaseGVN* phase, ConstAddOperands x_operands, ConstAddOperands y_operands);
+  Node* extract_add_L(PhaseGVN* phase, ConstAddOperandsL x_operands, ConstAddOperandsL y_operands);
 
 public:
   MaxNode( Node *in1, Node *in2 ) : AddNode(in1,in2) {}
@@ -269,6 +271,7 @@ public:
   virtual int max_opcode() const = 0;
   virtual int min_opcode() const = 0;
   Node* IdealI(PhaseGVN* phase, bool can_reshape);
+  Node* IdealL(PhaseGVN* phase, bool can_reshape);
   virtual Node* Identity(PhaseGVN* phase);
 
   static Node* unsigned_max(Node* a, Node* b, const Type* t, PhaseGVN& gvn) {
@@ -298,6 +301,7 @@ public:
   }
 
   static Node* build_min_max_int(Node* a, Node* b, bool is_max);
+  static Node* build_min_max_int_L(Node* a, Node* b, bool is_max);
   static Node* build_min_max_long(PhaseGVN* phase, Node* a, Node* b, bool is_max);
 };
 
@@ -337,10 +341,13 @@ public:
 // MAXimum of 2 longs.
 class MaxLNode : public MaxNode {
 public:
+/*
   MaxLNode(Compile* C, Node* in1, Node* in2) : MaxNode(in1, in2) {
     init_flags(Flag_is_macro);
     C->add_macro_node(this);
   }
+*/
+  MaxLNode(Node* in1, Node* in2) : MaxNode(in1, in2) {}
   virtual int Opcode() const;
   virtual const Type* add_ring(const Type* t0, const Type* t1) const;
   virtual const Type* add_id() const { return TypeLong::make(min_jlong); }
@@ -356,10 +363,13 @@ public:
 // MINimum of 2 longs.
 class MinLNode : public MaxNode {
 public:
+/*
   MinLNode(Compile* C, Node* in1, Node* in2) : MaxNode(in1, in2) {
     init_flags(Flag_is_macro);
     C->add_macro_node(this);
   }
+*/
+  MinLNode(Node* in1, Node* in2) : MaxNode(in1, in2) {}
   virtual int Opcode() const;
   virtual const Type* add_ring(const Type* t0, const Type* t1) const;
   virtual const Type* add_id() const { return TypeLong::make(max_jlong); }

@@ -509,8 +509,8 @@ bool LibraryCallKit::try_to_inline(int predicate) {
   case vmIntrinsics::_copyMemory:               return inline_unsafe_copyMemory();
   case vmIntrinsics::_setMemory:                return inline_unsafe_setMemory();
   case vmIntrinsics::_getLength:                return inline_native_getLength();
-  case vmIntrinsics::_copyOf:                   return inline_array_copyOf(false);
-  case vmIntrinsics::_copyOfRange:              return inline_array_copyOf(true);
+  case vmIntrinsics::_copyOf:                   return false; // return inline_array_copyOf(false);
+  case vmIntrinsics::_copyOfRange:              return false; // return inline_array_copyOf(true);
   case vmIntrinsics::_equalsB:                  return inline_array_equals(StrIntrinsicNode::LL);
   case vmIntrinsics::_equalsC:                  return inline_array_equals(StrIntrinsicNode::UU);
   case vmIntrinsics::_Preconditions_checkIndex: return inline_preconditions_checkIndex(T_INT);
@@ -684,9 +684,13 @@ bool LibraryCallKit::try_to_inline(int predicate) {
     return inline_character_compare(intrinsic_id());
 
   case vmIntrinsics::_min:
-  case vmIntrinsics::_max:
+  case vmIntrinsics::_minL:
+/*  case vmIntrinsics::_max:
+  case vmIntrinsics::_maxL:
   case vmIntrinsics::_min_strict:
   case vmIntrinsics::_max_strict:
+  case vmIntrinsics::_minL_strict:
+  case vmIntrinsics::_maxL_strict:*/
     return inline_min_max(intrinsic_id());
 
   case vmIntrinsics::_maxF:
@@ -2018,15 +2022,26 @@ bool LibraryCallKit::inline_math_unsignedMultiplyHigh() {
 Node*
 LibraryCallKit::generate_min_max(vmIntrinsics::ID id, Node* x0, Node* y0) {
   Node* result_val = nullptr;
+
   switch (id) {
   case vmIntrinsics::_min:
-  case vmIntrinsics::_min_strict:
+  // case vmIntrinsics::_min_strict:
     result_val = _gvn.transform(new MinINode(x0, y0));
     break;
+    /*
   case vmIntrinsics::_max:
   case vmIntrinsics::_max_strict:
     result_val = _gvn.transform(new MaxINode(x0, y0));
+    break;*/
+  case vmIntrinsics::_minL:
+  // case vmIntrinsics::_minL_strict:
+    result_val = _gvn.transform(new MinLNode(x0, y0));
     break;
+    /*
+  case vmIntrinsics::_maxL:
+  case vmIntrinsics::_maxL_strict:
+    result_val = _gvn.transform(new MaxLNode(x0, y0));
+    break;*/
   default:
     fatal_unexpected_iid(id);
     break;
@@ -4377,7 +4392,7 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
     if (!stopped()) {
       // How many elements will we copy from the original?
       // The answer is MinI(orig_tail, length).
-      Node* moved = generate_min_max(vmIntrinsics::_min, orig_tail, length);
+      Node* moved = nullptr; // generate_min_max(vmIntrinsics::_min, orig_tail, length);
 
       // Generate a direct call to the right arraycopy function(s).
       // We know the copy is disjoint but we might not know if the

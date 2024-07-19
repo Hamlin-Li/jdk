@@ -512,7 +512,7 @@ void Parse::do_call() {
   // Also, if we inline a guy who eventually needs debug info for this JVMS,
   // our contribution to it is cleaned up right here.
   kill_dead_locals();
-
+tty->print_cr("               do_call() 1, sp(): %d", sp());
   C->print_inlining_assert_ready();
 
   // Set frequently used booleans
@@ -564,7 +564,7 @@ void Parse::do_call() {
     Node* appendix_arg_node = _gvn.makecon(appendix_arg_type);
     push(appendix_arg_node);
   }
-
+tty->print_cr("               do_call() 2, sp(): %d", sp());
   // ---------------------
   // Does Class Hierarchy Analysis reveal only a single target of a v-call?
   // Then we may inline or make a static call, but become dependent on there being only 1 target.
@@ -594,7 +594,7 @@ void Parse::do_call() {
                                       call_does_dispatch, vtable_index);  // out-parameters
     speculative_receiver_type = receiver_type != nullptr ? receiver_type->speculative_type() : nullptr;
   }
-
+tty->print_cr("               do_call() 3, sp(): %d", sp());
   // Additional receiver subtype checks for interface calls via invokespecial or invokeinterface.
   ciKlass* receiver_constraint = nullptr;
   if (iter().cur_bc_raw() == Bytecodes::_invokespecial && !orig_callee->is_object_initializer()) {
@@ -608,6 +608,7 @@ void Parse::do_call() {
     receiver_constraint = holder;
   }
 
+tty->print_cr("               do_call() 3-1, sp(): %d", sp());
   if (receiver_constraint != nullptr) {
     Node* receiver_node = stack(sp() - nargs);
     Node* cls_node = makecon(TypeKlassPtr::make(receiver_constraint, Type::trust_interfaces));
@@ -625,15 +626,21 @@ void Parse::do_call() {
     set_stack(sp() - nargs, casted_receiver);
   }
 
+tty->print_cr("               do_call() 3-2, sp(): %d", sp());
   // Note:  It's OK to try to inline a virtual call.
   // The call generator will not attempt to inline a polymorphic call
   // unless it knows how to optimize the receiver dispatch.
   bool try_inline = (C->do_inlining() || InlineAccessors);
 
+tty->print_cr("               do_call() 3-3, sp(): %d, nargs: %d", sp(), nargs);
+orig_callee->print();
+tty->print_cr("");
   // ---------------------
   dec_sp(nargs);              // Temporarily pop args for JVM state of call
+tty->print_cr("               do_call() 3-4, sp(): %d, nargs: %d", sp(), nargs);
   JVMState* jvms = sync_jvms();
 
+tty->print_cr("               do_call() 3-5, sp(): %d", sp());
   // ---------------------
   // Decide call tactic.
   // This call checks with CHA, the interpreter profile, intrinsics table, etc.
@@ -643,10 +650,11 @@ void Parse::do_call() {
   // NOTE:  Don't use orig_callee and callee after this point!  Use cg->method() instead.
   orig_callee = callee = nullptr;
 
+tty->print_cr("               do_call() 3-6, sp(): %d", sp());
   // ---------------------
   // Round double arguments before call
   round_double_arguments(cg->method());
-
+tty->print_cr("               do_call() 4, sp(): %d", sp());
   // Feed profiling data for arguments to the type system so it can
   // propagate it as speculative types
   record_profiled_arguments_for_speculation(cg->method(), bc());
@@ -692,7 +700,7 @@ void Parse::do_call() {
       return;
     }
   }
-
+tty->print_cr("               do_call() 5, sp(): %d", sp());
   if (cg->is_inline()) {
     // Accumulate has_loops estimate
     C->env()->notice_inlined_method(cg->method());
@@ -709,7 +717,7 @@ void Parse::do_call() {
   }
 
   assert(check_call_consistency(jvms, cg), "inconsistent info");
-
+tty->print_cr("               do_call() 6, sp(): %d", sp());
   if (!stopped()) {
     // This was some sort of virtual call, which did a null check for us.
     // Now we can assert receiver-not-null, on the normal return path.
@@ -786,7 +794,7 @@ void Parse::do_call() {
       record_profiled_return_for_speculation();
     }
   }
-
+tty->print_cr("               do_call() 7, sp(): %d", sp());
   // Restart record of parsing work after possible inlining of call
 #ifndef PRODUCT
   parse_histogram()->set_initial_state(bc());

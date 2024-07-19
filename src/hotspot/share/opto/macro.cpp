@@ -2508,16 +2508,20 @@ bool PhaseMacroExpand::expand_macro_nodes() {
         n->as_OuterStripMinedLoop()->adjust_strip_mined_loop(&_igvn);
         C->remove_macro_node(n);
         success = true;
-      } else if (n->Opcode() == Op_MaxL) {
+      } else if (n->Opcode() == Op_MaxL && ConditionalMoveLimit > 0) {
         // Since MaxL and MinL are not implemented in the backend, we expand them to
         // a CMoveL construct now. At least until here, the type could be computed
         // precisely. CMoveL is not so smart, but we can give it at least the best
         // type we know abouot n now.
         Node* repl = MaxNode::signed_max(n->in(1), n->in(2), _igvn.type(n), _igvn);
+        tty->print_cr("========= MaxL: %ld", ConditionalMoveLimit);
+        repl->dump();
         _igvn.replace_node(n, repl);
         success = true;
-      } else if (n->Opcode() == Op_MinL) {
+      } else if (n->Opcode() == Op_MinL && ConditionalMoveLimit > 0) {
         Node* repl = MaxNode::signed_min(n->in(1), n->in(2), _igvn.type(n), _igvn);
+        tty->print_cr("========= MinL: %ld", ConditionalMoveLimit);
+        repl->dump();
         _igvn.replace_node(n, repl);
         success = true;
       }
@@ -2552,7 +2556,10 @@ bool PhaseMacroExpand::expand_macro_nodes() {
     int macro_count = C->macro_count();
     Node * n = C->macro_node(macro_count-1);
     assert(n->is_macro(), "only macro nodes expected here");
-    if (_igvn.type(n) == Type::TOP || (n->in(0) != nullptr && n->in(0)->is_top())) {
+    if (_igvn.type(n) == Type::TOP ||
+        (n->in(0) != nullptr && n->in(0)->is_top()) ||
+        (n->Opcode() == Op_MinL && ConditionalMoveLimit == 0) ||
+        (n->Opcode() == Op_MaxL && ConditionalMoveLimit == 0)) {
       // node is unreachable, so don't try to expand it
       C->remove_macro_node(n);
       continue;
@@ -2582,6 +2589,8 @@ bool PhaseMacroExpand::expand_macro_nodes() {
       expand_subtypecheck_node(n->as_SubTypeCheck());
       break;
     default:
+      n->dump();
+      tty->print_cr("========== n->class_id(): %d", n->class_id());
       assert(false, "unknown node type in macro list");
     }
     assert(C->macro_count() == (old_macro_count - 1), "expansion must have deleted one node from macro list");

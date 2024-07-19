@@ -250,7 +250,8 @@ Node* CMoveNode::Ideal_minmax(PhaseGVN* phase, CMoveNode* cmove) {
 
   // Create the Min/Max node based on the type and kind
   if (cmp_op == Op_CmpL) {
-    return MaxNode::build_min_max_long(phase, cmp_l, cmp_r, is_max);
+    // return MaxNode::build_min_max_long(phase, cmp_l, cmp_r, is_max);
+    return MaxNode::build_min_max_int_L(cmp_l, cmp_r, is_max);
   } else {
     return MaxNode::build_min_max_int(cmp_l, cmp_r, is_max);
   }

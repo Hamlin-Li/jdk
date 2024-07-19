@@ -2205,10 +2205,10 @@ void PhaseIdealLoop::do_unroll(IdealLoopTree *loop, Node_List &old_new, bool adj
       Node* new_limit_no_underflow_l = nullptr;
       if (stride_con > 0) {
         // limit = MaxL(limit - stride, min_jint)
-        new_limit_no_underflow_l = new MaxLNode(C, new_limit_l, underflow_clamp_l);
+        new_limit_no_underflow_l = new MaxLNode(new_limit_l, underflow_clamp_l);
       } else {
         // limit = MinL(limit - stride, max_jint)
-        new_limit_no_underflow_l = new MinLNode(C, new_limit_l, underflow_clamp_l);
+        new_limit_no_underflow_l = new MinLNode(new_limit_l, underflow_clamp_l);
       }
       register_new_node(new_limit_no_underflow_l, ctrl);
 
@@ -2394,11 +2394,11 @@ Node* PhaseIdealLoop::adjust_limit(bool is_positive_stride, Node* scale, Node* o
   Node* inner_result_long = nullptr;
   Node* outer_result_long = nullptr;
   if (is_positive_stride) {
-    inner_result_long = new MaxLNode(C, limit, _igvn.longcon(min_jint));
-    outer_result_long = new MinLNode(C, inner_result_long, old_limit_long);
+    inner_result_long = new MaxLNode(limit, _igvn.longcon(min_jint));
+    outer_result_long = new MinLNode(inner_result_long, old_limit_long);
   } else {
-    inner_result_long = new MinLNode(C, limit, _igvn.longcon(max_jint));
-    outer_result_long = new MaxLNode(C, inner_result_long, old_limit_long);
+    inner_result_long = new MinLNode(limit, _igvn.longcon(max_jint));
+    outer_result_long = new MaxLNode(inner_result_long, old_limit_long);
   }
   register_new_node(inner_result_long, pre_ctrl);
   register_new_node(outer_result_long, pre_ctrl);

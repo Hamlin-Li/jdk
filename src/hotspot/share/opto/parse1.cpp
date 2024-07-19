@@ -1591,11 +1591,19 @@ void Parse::do_one_block() {
     assert(!have_se || pre_bc_sp >= inputs, "have enough stack to execute this BC: pre_bc_sp=%d, inputs=%d", pre_bc_sp, inputs);
 #endif //ASSERT
 
+    int bc_ = bc();
+    int java_bc_ = java_bc();
+    int bci_ = bci();
     do_one_bytecode();
     if (failing()) return;
 
+    if (java_bc() == Bytecodes::_invokestatic) { // (sp() - pre_bc_sp) != depth) {
+      tty->print_cr("       before, bc(): %d, java_bc(): %d, bci(): %d", bc_, java_bc_, bci_);
+      tty->print_cr("       after, bc(): %d, java_bc(): %d, bci(): %d", bc(), java_bc(), bci());
+      tty->print_cr("       depth prediction: sp=%d, pre_bc_sp=%d, depth=%d, java_bc(): %d", sp(), pre_bc_sp, depth, java_bc());
+    }
     assert(!have_se || stopped() || failing() || (sp() - pre_bc_sp) == depth,
-           "incorrect depth prediction: sp=%d, pre_bc_sp=%d, depth=%d", sp(), pre_bc_sp, depth);
+           "incorrect depth prediction: sp=%d, pre_bc_sp=%d, depth=%d, java_bc(): %d", sp(), pre_bc_sp, depth, java_bc());
 
     do_exceptions();
 
