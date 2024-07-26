@@ -84,6 +84,7 @@ public:
   virtual int  reg(PhaseRegAlloc *ra_, const Node *node)   const;
   // input register lookup, corresponding to ext_format
   virtual int  reg(PhaseRegAlloc *ra_, const Node *node, int idx)   const;
+  virtual int  reg_vgr(PhaseRegAlloc *ra_, const Node *node, int idx)   const;
 
   // helpers for MacroAssembler generation from ADLC
   Register  as_Register(PhaseRegAlloc *ra_, const Node *node)   const {
@@ -135,9 +136,27 @@ public:
   }
 #endif
 #if defined(RISCV64)
-  VectorRegisterGroup as_VectorRegisterGroup(PhaseRegAlloc *ra_, const Node *node, int idx) const {
-    int encoding = reg(ra_, node, idx);
+  VectorRegister as_VectorRegister(PhaseRegAlloc *ra_, const Node *node) const {
+    int encoding = reg(ra_, node);
+    tty->print_cr("   ======== as_VectorRegister, encoding: %d", encoding);
+    return ::as_VectorRegister(reg(ra_, node));
+  }
+  VectorRegister as_VectorRegister(PhaseRegAlloc *ra_, const Node *node, int idx) const {
     const RegMask& rm = node->in(idx)->out_RegMask();
+    rm.dump();
+    node->in(idx)->dump();
+    int encoding = reg(ra_, node, idx);
+    tty->print_cr("   ======== as_VectorRegister, encoding: %d, idx: %d", encoding, idx);
+    return ::as_VectorRegister(reg(ra_, node, idx));
+  }
+  VectorRegisterGroup as_VectorRegisterGroup(PhaseRegAlloc *ra_, const Node *node, int idx) const {
+    const RegMask& rm = node->in(idx)->out_RegMask();
+    rm.dump();
+    node->in(idx)->dump();
+    int encoding = reg_vgr(ra_, node, idx);
+    tty->print_cr("   ======== as_VectorRegisterGroup, encoding: %d, idx: %d", encoding, idx);
+    //  encoding = reg_vgr(ra_, node, idx-1);
+    // tty->print_cr("   ======== as_VectorRegisterGroup, encoding: %d, idx-1: %d", encoding, idx-1);
     int first = rm.find_first_elem();
     int last = rm.find_last_elem();
     int lmul = last - first + 1;

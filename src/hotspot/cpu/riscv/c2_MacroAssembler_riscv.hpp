@@ -190,7 +190,9 @@
 
   void string_equals_v(Register r1, Register r2,
                        Register result, Register cnt1,
-                       VectorRegisterGroup vg1, VectorRegisterGroup vg2);
+                       VectorRegisterGroup vg1, VectorRegisterGroup vg2,
+                        VectorRegister v1, VectorRegister vx, VectorRegister vy,
+                       Register rx, Register ry, Register rz, Register r00, Register r01, Register r02);
 
   void arrays_equals_v(Register r1, Register r2,
                        Register result, Register cnt1,

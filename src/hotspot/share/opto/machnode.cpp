@@ -43,6 +43,10 @@ int MachOper::reg(PhaseRegAlloc *ra_, const Node *node) const {
 int MachOper::reg(PhaseRegAlloc *ra_, const Node *node, int idx) const {
   return (int)(ra_->get_encode(node->in(idx)));
 }
+// input register lookup, corresponding to ext_format
+int MachOper::reg_vgr(PhaseRegAlloc *ra_, const Node *node, int idx) const {
+  return (int)(ra_->get_encode_vgr(node->in(idx)));
+}
 intptr_t  MachOper::constant() const { return 0x00; }
 relocInfo::relocType MachOper::constant_reloc() const { return relocInfo::none; }
 jdouble MachOper::constantD() const { ShouldNotReachHere(); return 0.0; }

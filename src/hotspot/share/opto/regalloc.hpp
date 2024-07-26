@@ -91,10 +91,12 @@ public:
   }
   void set2( uint idx, OptoReg::Name reg ) {
     assert( idx < _node_regs_max_index, "Exceeded _node_regs array");
+    // tty->print_cr("------------ set2, idx: %d", idx);
     _node_regs[idx].set2(reg);
   }
   void set_pair( uint idx, OptoReg::Name hi, OptoReg::Name lo ) {
     assert( idx < _node_regs_max_index, "Exceeded _node_regs array");
+    // tty->print_cr("------------ set_pair, idx: %d, hi: %d, lo: %d", idx, hi, lo);
     _node_regs[idx].set_pair(hi, lo);
   }
   void set_ptr( uint idx, OptoReg::Name reg ) {
@@ -117,6 +119,16 @@ public:
     assert( n->_idx < _node_regs_max_index, "Exceeded _node_regs array");
     OptoReg::Name first = _node_regs[n->_idx].first();
     OptoReg::Name second = _node_regs[n->_idx].second();
+    assert( !OptoReg::is_valid(second) || second == first+1, "" );
+    assert(OptoReg::is_reg(first), "out of range");
+    return Matcher::_regEncode[first];
+  }
+  // Get the register encoding associated with the Node
+  int get_encode_vgr(const Node *n) const {
+    assert( n->_idx < _node_regs_max_index, "Exceeded _node_regs array");
+    OptoReg::Name first = _node_regs[n->_idx].first();
+    OptoReg::Name second = _node_regs[n->_idx].second();
+    tty->print_cr("   ============ get_encode_vgr, n->_idx: %d, first: %d, second: %d", n->_idx, first, second);
     assert( !OptoReg::is_valid(second) || second == first+1, "" );
     assert(OptoReg::is_reg(first), "out of range");
     return Matcher::_regEncode[first];

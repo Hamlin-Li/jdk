@@ -188,9 +188,22 @@ private:
   short _first;
 public:
   void set_bad (                   ) { _second = OptoReg::Bad; _first = OptoReg::Bad; }
-  void set1    ( OptoReg::Name n  ) { _second = OptoReg::Bad; _first = n; }
-  void set2    ( OptoReg::Name n  ) { _second = n + 1;       _first = n; }
-  void set_pair( OptoReg::Name second, OptoReg::Name first    ) { _second= second;    _first= first; }
+  void set1    ( OptoReg::Name n  ) { _second = OptoReg::Bad; _first = n; 
+    // tty->print_cr("   ------------ OptoRegPair::set1, _first: %d, _second: %d", _first, _second);
+    }
+  void set2    ( OptoReg::Name n  ) { _second = n + 1;       _first = n; 
+    if (_first == 136 && _second == 137) {
+      tty->print_cr("   ------------ OptoRegPair::set2, _first: %d, _second: %d", _first, _second);
+      // ShouldNotReachHere();
+    }
+  }
+  void set_pair( OptoReg::Name second, OptoReg::Name first    ) { _second= second;    _first= first; 
+    // tty->print_cr("   ------------ OptoRegPair::set_pair, _first: %d, _second: %d", _first, _second);
+    if (_first == 136 && _second == 137) {
+      tty->print_cr("   ------------ OptoRegPair::set2, _first: %d, _second: %d", _first, _second);
+      // ShouldNotReachHere();
+    }
+  }
   void set_ptr ( OptoReg::Name ptr ) {
 #ifdef _LP64
     _second = ptr+1;
@@ -198,11 +211,22 @@ public:
     _second = OptoReg::Bad;
 #endif
     _first = ptr;
+    // tty->print_cr("   ------------ OptoRegPair::set_ptr, _first: %d, _second: %d", _first, _second);
+    if (_first == 136 && _second == 137) {
+      tty->print_cr("   ------------ OptoRegPair::set2, _first: %d, _second: %d", _first, _second);
+      // ShouldNotReachHere();
+    }
   }
 
   OptoReg::Name second() const { return _second; }
   OptoReg::Name first() const { return _first; }
-  OptoRegPair(OptoReg::Name second, OptoReg::Name first) {  _second = second; _first = first; }
+  OptoRegPair(OptoReg::Name second, OptoReg::Name first) {  _second = second; _first = first; 
+    // tty->print_cr("   ------------ OptoRegPair, first: %d, second: %d", first, second);
+    if (_first == 136 && _second == 137) {
+      tty->print_cr("   ------------ OptoRegPair::set2, _first: %d, _second: %d", _first, _second);
+      // ShouldNotReachHere();
+    }
+  }
   OptoRegPair(OptoReg::Name f) { _second = OptoReg::Bad; _first = f; }
   OptoRegPair() { _second = OptoReg::Bad; _first = OptoReg::Bad; }
 };

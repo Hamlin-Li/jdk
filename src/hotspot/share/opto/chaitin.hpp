@@ -73,7 +73,16 @@ public:
   // Return chosen register for this LRG.  Error if the LRG is not bound to
   // a single register.
   OptoReg::Name reg() const { return OptoReg::Name(_reg); }
-  void set_reg( OptoReg::Name r ) { _reg = r; }
+  void set_reg( OptoReg::Name r ) { _reg = r; 
+    if (_reg >= 132 && _reg <= 139) {
+      tty->print_cr("******** LRG::set_reg, reg: %d, RegMask::CHUNK_SIZE: %d", _reg, RegMask::CHUNK_SIZE);
+      tty->print("        ");
+      mask().dump();
+      tty->print("        ");
+      dump();
+      // ShouldNotReachHere();
+    }
+  }
 
 private:
   uint _eff_degree;             // Effective degree: Sum of neighbors _num_regs
@@ -129,13 +138,22 @@ public:
   // count of bits in the current mask.
   int get_invalid_mask_size() const { return _mask_size; }
   const RegMask &mask() const { return _mask; }
-  void set_mask( const RegMask &rm ) { _mask = rm; debug_only(_msize_valid=0;)}
+  void set_mask( const RegMask &rm ) { _mask = rm; debug_only(_msize_valid=0;)
+    tty->print_cr("******** LRG::set_mask");
+    tty->print("        ");
+    _mask.print();
+    tty->print_cr("");
+  }
   void AND( const RegMask &rm ) { _mask.AND(rm); debug_only(_msize_valid=0;)}
   void SUBTRACT( const RegMask &rm ) { _mask.SUBTRACT(rm); debug_only(_msize_valid=0;)}
   void Clear()   { _mask.Clear()  ; debug_only(_msize_valid=1); _mask_size = 0; }
   void Set_All() { _mask.Set_All(); debug_only(_msize_valid=1); _mask_size = RegMask::CHUNK_SIZE; }
 
-  void Insert( OptoReg::Name reg ) { _mask.Insert(reg);  debug_only(_msize_valid=0;) }
+  void Insert( OptoReg::Name reg ) { _mask.Insert(reg);  debug_only(_msize_valid=0;) 
+    if (reg >= 132 && reg <= 139) {
+      tty->print_cr("******** LRG::Insert, reg: %d", reg);
+    }
+  }
   void Remove( OptoReg::Name reg ) { _mask.Remove(reg);  debug_only(_msize_valid=0;) }
   void clear_to_sets()  { _mask.clear_to_sets(_num_regs); debug_only(_msize_valid=0;) }
 
@@ -151,7 +169,9 @@ private:
                                 // Meaningful only when _is_scalable is true.
 public:
   int num_regs() const { return _num_regs; }
-  void set_num_regs( int reg ) { assert( _num_regs == reg || !_num_regs, "" ); _num_regs = reg; }
+  void set_num_regs( int reg ) { assert( _num_regs == reg || !_num_regs, "" ); _num_regs = reg; 
+      tty->print_cr("******** LRG::set_num_regs, reg: %d", reg);
+  }
 
   uint scalable_reg_slots() { return _scalable_reg_slots; }
   void set_scalable_reg_slots(uint slots) {
@@ -492,6 +512,7 @@ public:
 
   LRG &lrgs(uint idx) const { return _ifg->lrgs(idx); }
 
+  void print_lrg(const char* msg, int round);
   // Do all the real work of allocate
   void Register_Allocate();
 

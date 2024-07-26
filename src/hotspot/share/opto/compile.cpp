@@ -684,6 +684,10 @@ Compile::Compile( ciEnv* ci_env, ciMethod* target, int osr_bci,
                   , _in_dump_cnt(0)
 #endif
 {
+  tty->print_cr(""); tty->print_cr(""); tty->print_cr(""); tty->print_cr(""); 
+  tty->print_cr("======== ======== ======== ======== Compile: ");
+  _method->print_name(tty);
+  _method->get_Method()->print_on(tty);
   C = this;
   CompileWrapper cw(this);
 

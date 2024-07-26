@@ -2350,7 +2350,9 @@ void C2_MacroAssembler::element_compare(Register a1, Register a2, Register resul
 }
 
 void C2_MacroAssembler::string_equals_v(Register a1, Register a2, Register result, Register cnt,
-                                        VectorRegisterGroup vg1, VectorRegisterGroup vg2) {
+                                        VectorRegisterGroup vg1, VectorRegisterGroup vg2,
+                                         VectorRegister v1, VectorRegister vx, VectorRegister vy,
+                                        Register rx, Register ry, Register rz, Register r00, Register r01, Register r02) {
   Label DONE;
   Register tmp1 = t0;
   Register tmp2 = t1;
@@ -2360,6 +2362,20 @@ void C2_MacroAssembler::string_equals_v(Register a1, Register a2, Register resul
   mv(result, false);
 
   element_compare(a1, a2, result, cnt, tmp1, tmp2, vg1, vg2, vg1, true, DONE);
+
+  vsetvli(ry, rx, Assembler::e32, Assembler::m1);
+  if (true) {
+    
+    vlex_v(v1, rz, Assembler::e32);
+    vlex_v(vx, r00, Assembler::e32);
+    vlex_v(vy, r01, Assembler::e32);
+    
+  } else {
+    vlex_v(v8, rz, Assembler::e32);
+    vlex_v(v9, r00, Assembler::e32);
+    vlex_v(v10, r01, Assembler::e32);
+  }
+  ld(r02, Address(zr, 0));
 
   bind(DONE);
   BLOCK_COMMENT("} string_equals_v");
