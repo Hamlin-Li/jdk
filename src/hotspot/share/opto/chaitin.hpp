@@ -75,12 +75,14 @@ public:
   OptoReg::Name reg() const { return OptoReg::Name(_reg); }
   void set_reg( OptoReg::Name r ) { _reg = r; 
     if (_reg >= 132 && _reg <= 139) {
-      tty->print_cr("******** LRG::set_reg, reg: %d, RegMask::CHUNK_SIZE: %d", _reg, RegMask::CHUNK_SIZE);
-      tty->print("        ");
-      mask().dump();
-      tty->print("        ");
-      dump();
-      // ShouldNotReachHere();
+
+      if (RISCV_Log_RegAlloc) {
+        tty->print_cr("******** LRG::set_reg, reg: %d, RegMask::CHUNK_SIZE: %d", _reg, RegMask::CHUNK_SIZE);
+        tty->print("        ");
+        mask().dump();
+        tty->print("        ");
+        dump();
+      }
     }
   }
 
@@ -139,10 +141,13 @@ public:
   int get_invalid_mask_size() const { return _mask_size; }
   const RegMask &mask() const { return _mask; }
   void set_mask( const RegMask &rm ) { _mask = rm; debug_only(_msize_valid=0;)
-    tty->print_cr("******** LRG::set_mask");
-    tty->print("        ");
-    _mask.print();
-    tty->print_cr("");
+
+    if (RISCV_Log_RegAlloc) {
+      tty->print_cr("******** LRG::set_mask");
+      tty->print("        ");
+      _mask.print();
+      tty->print_cr("");
+    }
   }
   void AND( const RegMask &rm ) { _mask.AND(rm); debug_only(_msize_valid=0;)}
   void SUBTRACT( const RegMask &rm ) { _mask.SUBTRACT(rm); debug_only(_msize_valid=0;)}
@@ -151,7 +156,9 @@ public:
 
   void Insert( OptoReg::Name reg ) { _mask.Insert(reg);  debug_only(_msize_valid=0;) 
     if (reg >= 132 && reg <= 139) {
-      tty->print_cr("******** LRG::Insert, reg: %d", reg);
+      if (RISCV_Log_RegAlloc) {
+        tty->print_cr("******** LRG::Insert, reg: %d", reg);
+      }
     }
   }
   void Remove( OptoReg::Name reg ) { _mask.Remove(reg);  debug_only(_msize_valid=0;) }
@@ -170,7 +177,9 @@ private:
 public:
   int num_regs() const { return _num_regs; }
   void set_num_regs( int reg ) { assert( _num_regs == reg || !_num_regs, "" ); _num_regs = reg; 
-      tty->print_cr("******** LRG::set_num_regs, reg: %d", reg);
+    if (RISCV_Log_RegAlloc) {
+      tty->print_cr("            ******** LRG::set_num_regs, reg: %d", reg);
+    }
   }
 
   uint scalable_reg_slots() { return _scalable_reg_slots; }
@@ -183,7 +192,7 @@ public:
   bool is_scalable() {
 #ifdef ASSERT
     if (_is_scalable) {
-      assert((_is_vector && (_num_regs == RegMask::SlotsPerVecA)) ||
+      assert((_is_vector && ((_num_regs == RegMask::SlotsPerVecA || is_power_of_2(_num_regs)))) ||
              (_is_predicate && (_num_regs == RegMask::SlotsPerRegVectMask)), "unexpected scalable reg");
     }
 #endif

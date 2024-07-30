@@ -2351,7 +2351,7 @@ void C2_MacroAssembler::element_compare(Register a1, Register a2, Register resul
 
 void C2_MacroAssembler::string_equals_v(Register a1, Register a2, Register result, Register cnt,
                                         VectorRegisterGroup vg1, VectorRegisterGroup vg2,
-                                         VectorRegister v1, VectorRegister vx, VectorRegister vy,
+                                         VectorRegister v6, VectorRegister vx, VectorRegister vy,
                                         Register rx, Register ry, Register rz, Register r00, Register r01, Register r02) {
   Label DONE;
   Register tmp1 = t0;
@@ -2366,16 +2366,21 @@ void C2_MacroAssembler::string_equals_v(Register a1, Register a2, Register resul
   vsetvli(ry, rx, Assembler::e32, Assembler::m1);
   if (true) {
     
-    vlex_v(v1, rz, Assembler::e32);
-    vlex_v(vx, r00, Assembler::e32);
-    vlex_v(vy, r01, Assembler::e32);
-    
+    vlex_v(v6, a1, Assembler::e32);
+    vlex_v(vx, a2, Assembler::e32);
+    vlex_v(vy, result, Assembler::e32);
+
   } else {
     vlex_v(v8, rz, Assembler::e32);
     vlex_v(v9, r00, Assembler::e32);
     vlex_v(v10, r01, Assembler::e32);
+
+    vlex_v(v6, rz, Assembler::e32);
+    vlex_v(vx, r00, Assembler::e32);
+    vlex_v(vy, r01, Assembler::e32);
+    
   }
-  ld(r02, Address(zr, 0));
+  // ld(r02, Address(zr, 0));
 
   bind(DONE);
   BLOCK_COMMENT("} string_equals_v");
@@ -2572,13 +2577,13 @@ void C2_MacroAssembler::encode_iso_array_v(Register src, Register dst, Register 
   vsetvli(t0, len, Assembler::e16, Assembler::m2);
   vle16_v(v2, src);
 
-  vmsgtu_vx(v1, v2, tmp);
-  vfirst_m(tmp, v1);
-  vmsbf_m(v0, v1);
+  vmsgtu_vx(v6, v2, tmp);
+  vfirst_m(tmp, v6);
+  vmsbf_m(v0, v6);
   // compress char to byte
   vsetvli(t0, len, Assembler::e8);
-  vncvt_x_x_w(v1, v2, Assembler::v0_t);
-  vse8_v(v1, dst, Assembler::v0_t);
+  vncvt_x_x_w(v6, v2, Assembler::v0_t);
+  vse8_v(v6, dst, Assembler::v0_t);
 
   // fail if char > 0x7f/0xff
   bgez(tmp, fail);

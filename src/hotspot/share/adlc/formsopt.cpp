@@ -304,14 +304,19 @@ const RegDef* RegClass::find_first_elem() {
   return first;;
 }
 
+#define print_cr(fp, ...)  \
+  if (RISCV_Log_ADLC) fprintf(fp, __VA_ARGS__)
+
 // Collect all the registers in this register-word.  One bit per register.
-int RegClass::regs_in_word( int wordnum, bool stack_also ) {
+int RegClass::regs_in_word( int wordnum, bool stack_also, FILE* fp ) {
   int         word = 0;
   const char *name;
+  print_cr(fp, "%s\n", "");
   for(_regDefs.reset(); (name = _regDefs.iter()) != nullptr;) {
     int rnum = ((RegDef*)_regDef[name])->register_num();
     if( (rnum >> 5) == wordnum )
       word |= (1 << (rnum & 31));
+    print_cr(fp, "//              regs_in_word, wordnum: %d, name: %s, rnum: %d, word: %d\n", wordnum, name, rnum, word);
   }
   if( stack_also ) {
     // Now also collect stack bits
@@ -362,20 +367,24 @@ void RegClass::build_register_masks(FILE* fp) {
   fprintf(fp, "const RegMask _%s%s_mask(", prefix, rc_name_to_upper);
 
   int i;
+  print_cr(fp, "\n// ++++++ RegClass::build_register_masks, %s, len: %d\n", rc_name_to_upper, len);
   for(i = 0; i < len - 1; i++) {
-    fprintf(fp," 0x%x,", regs_in_word(i, false));
+    print_cr(fp, "\n//        i: %d\n", i);
+    fprintf(fp," 0x%x,", regs_in_word(i, false, fp));
   }
-  fprintf(fp," 0x%x );\n", regs_in_word(i, false));
+  fprintf(fp," 0x%x );\n", regs_in_word(i, false, fp));
 
   if (_stack_or_reg) {
     fprintf(fp, "const RegMask _%sSTACK_OR_%s_mask(", prefix, rc_name_to_upper);
     for(i = 0; i < len - 1; i++) {
-      fprintf(fp," 0x%x,", regs_in_word(i, true));
+      fprintf(fp," 0x%x,", regs_in_word(i, true, fp));
     }
-    fprintf(fp," 0x%x );\n", regs_in_word(i, true));
+    fprintf(fp," 0x%x );\n", regs_in_word(i, true, fp));
   }
   delete[] rc_name_to_upper;
 }
+
+#undef print_cr
 
 //------------------------------CodeSnippetRegClass---------------------------
 CodeSnippetRegClass::CodeSnippetRegClass(const char* classid) : RegClass(classid), _code_snippet(nullptr) {

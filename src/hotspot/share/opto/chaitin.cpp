@@ -354,13 +354,15 @@ void PhaseChaitin::compact() {
 
 
 void PhaseChaitin::print_lrg(const char* msg, int idx) {
-  tty->print_cr("");
-  tty->print_cr("++++++++ ++++++++  %s, round: %d", msg, idx);
-  for (uint i=0; i < _lrg_map.size(); i++) {
-      LRG &lrg = lrgs(_lrg_map.live_range_id(i));
-      tty->print_cr("        lrg: %d", i);
-      tty->print("    ");
-      lrg.dump();
+  if (RISCV_Log_RegAlloc) {
+    tty->print_cr("");
+    tty->print_cr("++++++++ ++++++++  %s, round: %d", msg, idx);
+    for (uint i=0; i < _lrg_map.size(); i++) {
+        LRG &lrg = lrgs(_lrg_map.live_range_id(i));
+        tty->print_cr("        lrg: %d", i);
+        tty->print("    ");
+        lrg.dump();
+    }
   }
 }
 
@@ -673,8 +675,10 @@ void PhaseChaitin::Register_Allocate() {
   // Move important info out of the live_arena to longer lasting storage.
   alloc_node_regs(_lrg_map.size());
 
-  tty->print_cr("");
-  tty->print_cr("-------- --------  PhaseChaitin::Register_Allocate, ending...");
+  if (RISCV_Log_RegAlloc) {
+    tty->print_cr("");
+    tty->print_cr("-------- --------  PhaseChaitin::Register_Allocate, ending...");
+  }
   for (uint i=0; i < _lrg_map.size(); i++) {
     if (_lrg_map.live_range_id(i)) { // Live range associated with Node?
       LRG &lrg = lrgs(_lrg_map.live_range_id(i));
@@ -708,19 +712,22 @@ void PhaseChaitin::Register_Allocate() {
             // It is also used in BuildOopMaps but oop operations are not
             // vectorized.
             if (lo == 136) {
-              tty->print_cr("================ Register_Allocate, num_regs: %d, lrg.num_regs(): %d, lrg.is_scalable(): %d, OptoReg::is_stack(hi): %d, hi: %d, lo: %d, i: %d",
-                                                                       num_regs,    lrg.num_regs(), lrg.is_scalable(),    OptoReg::is_stack(hi), hi, lo, i);
-              // ================ Register_Allocate, num_regs: 4, lrg.num_regs(): 4, lrg.is_scalable(): 1, OptoReg::is_stack(hi): 0, hi: 139, lo: 136, i: 56
-              tty->print_cr("<<<<<<<<<< start dump: ");
-              lrg.dump();
-                for (uint i=0; i < _lrg_map.size(); i++) {
-                  if (_lrg_map.live_range_id(i)) { // Live range associated with Node?
-                    LRG &tmp = lrgs(_lrg_map.live_range_id(i));
-                    tty->print("   ");
-                    tmp.dump();
+
+              if (RISCV_Log_RegAlloc) {
+                tty->print_cr("================ Register_Allocate, num_regs: %d, lrg.num_regs(): %d, lrg.is_scalable(): %d, OptoReg::is_stack(hi): %d, hi: %d, lo: %d, i: %d",
+                                                                        num_regs,    lrg.num_regs(), lrg.is_scalable(),    OptoReg::is_stack(hi), hi, lo, i);
+                // ================ Register_Allocate, num_regs: 4, lrg.num_regs(): 4, lrg.is_scalable(): 1, OptoReg::is_stack(hi): 0, hi: 139, lo: 136, i: 56
+                tty->print_cr("<<<<<<<<<< start dump: ");
+                lrg.dump();
+                  for (uint i=0; i < _lrg_map.size(); i++) {
+                    if (_lrg_map.live_range_id(i)) { // Live range associated with Node?
+                      LRG &tmp = lrgs(_lrg_map.live_range_id(i));
+                      tty->print("   ");
+                      tmp.dump();
+                    }
                   }
-                }
-              tty->print_cr(">>>>>>>>>> end dump: ");
+                tty->print_cr(">>>>>>>>>> end dump: ");
+              }
             }
             set2(i, lo);
           }
@@ -733,9 +740,12 @@ void PhaseChaitin::Register_Allocate() {
       }
       if( lrg._is_oop ) _node_oops.set(i);
 
-      tty->print_cr("        lrg: %d", i);
-      tty->print("    ");
-      lrg.dump();
+
+      if (RISCV_Log_RegAlloc) {
+        tty->print_cr("        lrg: %d", i);
+        tty->print("    ");
+        lrg.dump();
+      }
     } else {
       set_bad(i);
     }
@@ -794,6 +804,8 @@ void PhaseChaitin::mark_ssa() {
 }
 
 
+              static int tmp_err = 0;
+
 // Gather LiveRanGe information, including register masks.  Modification of
 // cisc spillable in_RegMasks should not be done before AggressiveCoalesce.
 void PhaseChaitin::gather_lrg_masks( bool after_aggressive ) {
@@ -803,20 +815,27 @@ void PhaseChaitin::gather_lrg_masks( bool after_aggressive ) {
   lrgs(fp_lrg)._cost += 1e12;   // Cost is infinite
 
 
-  tty->print_cr("");
-  tty->print_cr("======== ========  gather_lrg_masks, For all blocks");
+  if (RISCV_Log_RegAlloc) {
+    tty->print_cr("");
+    tty->print_cr("======== ========  gather_lrg_masks, For all blocks");
+  }
   // For all blocks
   for (uint i = 0; i < _cfg.number_of_blocks(); i++) {
-    tty->print_cr("    block: %d", i);
+
+    if (RISCV_Log_RegAlloc) {
+      tty->print_cr("    block: %d", i);
+    }
     Block* block = _cfg.get_block(i);
 
     // For all instructions
     for (uint j = 1; j < block->number_of_nodes(); j++) {
       Node* n = block->get_node(j);
       
-      tty->print_cr("        node: %d", j);
-      tty->print("        ");
-      n->dump();
+      if (RISCV_Log_RegAlloc) {
+        tty->print_cr("        node: %d", j);
+        tty->print("        ");
+        n->dump();
+      }
 
       uint input_edge_start =1; // Skip control most nodes
       bool is_machine_node = false;
@@ -877,14 +896,20 @@ void PhaseChaitin::gather_lrg_masks( bool after_aggressive ) {
 
         // Limit result register mask to acceptable registers
         const RegMask &rm = n->out_RegMask();
-        tty->print("            lgr dump (before AND): ");
-        lrg.dump();
-        lrg.AND( rm );
-        tty->print("            lgr dump (afer AND): ");
-        lrg.dump();
+
+        if (RISCV_Log_RegAlloc) {
+          tty->print("            lgr dump (before AND): ");
+          lrg.dump();
+          lrg.AND( rm );
+          tty->print("            lgr dump (afer AND): ");
+          lrg.dump();
+        }
 
         uint ireg = n->ideal_reg();
-        tty->print_cr("            n->ideal_reg(): %d", ireg);
+
+        if (RISCV_Log_RegAlloc) {
+          tty->print_cr("            n->ideal_reg(): %d", ireg);
+        }
 
         assert( !n->bottom_type()->isa_oop_ptr() || ireg == Op_RegP,
                 "oops must be in Op_RegP's" );
@@ -1031,12 +1056,24 @@ void PhaseChaitin::gather_lrg_masks( bool after_aggressive ) {
           assert(Matcher::supports_scalable_vector(), "does not support scalable vector");
           assert(RegMask::num_registers(Op_VecA) == RegMask::SlotsPerVecA, "sanity");
           assert(lrgmask.is_aligned_sets(RegMask::SlotsPerVecA), "vector should be aligned");
-          lrg.set_num_regs(RegMask::SlotsPerVecA);
+
+          if (RISCV_Log_RegAlloc) {
+            tty->print("            lrg.dump: ");
+            lrg.dump();
+            tty->print("            n->dump: ");
+            n->dump();
+            tty->print("            n->out_RegMask()->dump: ");
+            n->out_RegMask().dump();  tty->print_cr("        , size: %d", n->out_RegMask().Size());
+            tty->print("            lrg.set_num_regs: ");
+          }
+          // TODO
+
+          if (is_power_of_2(n->out_RegMask().Size())) {
+            lrg.set_num_regs(n->out_RegMask().Size()); // RegMask::SlotsPerVecA);
+          } else {
+            lrg.set_num_regs(RegMask::SlotsPerVecA);
+          }
           lrg.set_reg_pressure(1);
-
-          tty->print("            lrg.set_num_regs: ");
-          lrg.dump();
-
           break;
         case Op_VecS:
           assert(Matcher::vector_size_supported(T_BYTE,4), "sanity");
@@ -1156,9 +1193,38 @@ void PhaseChaitin::gather_lrg_masks( bool after_aggressive ) {
 #ifdef ASSERT
         if (is_vect && !_scheduling_info_generated) {
           if (lrg.num_regs() != 0) {
-            assert(lrgmask.is_aligned_sets(lrg.num_regs()), "vector should be aligned");
+            // assert(lrgmask.is_aligned_sets(lrg.num_regs()), "vector should be aligned");
+            if (!lrgmask.is_aligned_sets(lrg.num_regs(), &lrg, n, n->in(k))) {
+
+              if (RISCV_Log_RegAlloc) {
+                tty->print("            lrg.dump: ");
+                lrg.dump();
+                tty->print("            n->dump: ");
+                n->dump();
+              }
+              assert(false, "vector should be aligned");
+            }
             assert(!lrg._fat_proj, "sanity");
-            assert(RegMask::num_registers(kreg) == lrg.num_regs(), "sanity");
+            // assert(RegMask::num_registers(kreg) == lrg.num_regs(), "sanity");
+            if (RegMask::num_registers(kreg) != lrg.num_regs()) {
+
+              if (true) { // (RISCV_Log_RegAlloc) {
+                tty->print_cr("            k: %d, kreg: %d, RegMask::num_registers(kreg): %d, lrg.num_regs(): %d",
+                                          k, kreg, RegMask::num_registers(kreg), lrg.num_regs());
+                tty->print("            lrg.dump: ");
+                lrg.dump();
+                tty->print("            n->dump: ");
+                n->dump();
+                tty->print("            n->in(k)->dump: ");
+                Node* ktmp = n->in(k);
+                ktmp->dump();
+                tty->print("            ktmp->out_RegMask()->dump: , size: %d", ktmp->out_RegMask().Size());
+                ktmp->out_RegMask().dump();  tty->print_cr("");
+                // if (tmp_err == 1) assert(false, "sanity");
+              }
+              tmp_err++;
+              assert(false, "sanity");
+            }
           } else {
             assert(n->is_Phi(), "not all inputs processed only if Phi");
           }
@@ -1186,8 +1252,11 @@ void PhaseChaitin::gather_lrg_masks( bool after_aggressive ) {
   } // end for all blocks
 
   // Final per-liverange setup
-  tty->print_cr("");
-  tty->print_cr("******** ********  gather_lrg_masks, ending ...");
+
+  if (RISCV_Log_RegAlloc) {
+    tty->print_cr("");
+    tty->print_cr("******** ********  gather_lrg_masks, ending ...");
+  }
   for (uint i2 = 0; i2 < _lrg_map.max_lrg_id(); i2++) {
     LRG &lrg = lrgs(i2);
     assert(!lrg._is_vector || !lrg._fat_proj, "sanity");
@@ -1201,9 +1270,11 @@ void PhaseChaitin::gather_lrg_masks( bool after_aggressive ) {
     }
     lrg.set_degree(0);          // no neighbors in IFG yet
 
-    tty->print_cr("        lrg: %d", i2);
-    tty->print("    ");
-    lrg.dump();
+    if (RISCV_Log_RegAlloc) {
+      tty->print_cr("        lrg: %d", i2);
+      tty->print("    ");
+      lrg.dump();
+    }
   }
 }
 
@@ -1559,7 +1630,10 @@ OptoReg::Name PhaseChaitin::choose_color( LRG &lrg, int chunk ) {
       !lrg._fat_proj )          // Aligned+adjacent pairs ok
     // Use a heuristic to "bias" the color choice
     {
-    tty->print_cr("******** PhaseChaitin::choose_color, lrg.num_regs(): %d, lrg._fat_proj: %d", lrg.num_regs(), lrg._fat_proj);
+
+    if (RISCV_Log_RegAlloc) {
+      tty->print_cr("******** PhaseChaitin::choose_color, lrg.num_regs(): %d, lrg._fat_proj: %d", lrg.num_regs(), lrg._fat_proj);
+    }
     return bias_color(lrg, chunk);
   }
 
@@ -1574,10 +1648,13 @@ OptoReg::Name PhaseChaitin::choose_color( LRG &lrg, int chunk ) {
   OptoReg::Name res = lrg.mask().find_last_elem();
   if (res >= 132 && res <= 139) 
   {
-    tty->print_cr("******** PhaseChaitin::choose_color");
-    tty->print("        ");
-    lrg.mask().dump();
-    tty->print_cr("");
+
+    if (RISCV_Log_RegAlloc) {
+      tty->print_cr("******** PhaseChaitin::choose_color");
+      tty->print("        ");
+      lrg.mask().dump();
+      tty->print_cr("");
+    }
   }
   return res;
 }
@@ -1689,7 +1766,9 @@ uint PhaseChaitin::Select( ) {
 #endif
 
       // Record selected register
-      tty->print_cr("        PhaseChaitin::Select 0, set_reg, chunk: %d", chunk);
+      if (RISCV_Log_RegAlloc) {
+        tty->print_cr("        PhaseChaitin::Select 0, set_reg, chunk: %d", chunk);
+      }
       lrg->set_reg(reg);
 
       if( reg >= _max_reg )     // Compute max register limit
@@ -1700,11 +1779,12 @@ uint PhaseChaitin::Select( ) {
       // If the live range is not bound, then we actually had some choices
       // to make.  In this case, the mask has more bits in it than the colors
       // chosen.  Restrict the mask to just what was picked.
+      // TODO
       int n_regs = lrg->num_regs();
       assert(!lrg->_is_vector || !lrg->_fat_proj, "sanity");
       if (n_regs == 1 || !lrg->_fat_proj) {
         if (Matcher::supports_scalable_vector()) {
-          assert(!lrg->_is_vector || n_regs <= RegMask::SlotsPerVecA, "sanity");
+          assert(!lrg->_is_vector || (n_regs <= RegMask::SlotsPerVecA || is_power_of_2(n_regs)), "sanity, n_regs: %d", n_regs);
         } else {
           assert(!lrg->_is_vector || n_regs <= RegMask::SlotsPerVecZ, "sanity");
         }
@@ -1715,6 +1795,7 @@ uint PhaseChaitin::Select( ) {
         if (lrg->is_scalable() && OptoReg::is_stack(lrg->reg())) { // stack
           n_regs = lrg->scalable_reg_slots();
         }
+        // TODO
         for (int i = 1; i < n_regs; i++) {
           lrg->Insert(OptoReg::add(reg,-i));
         }
@@ -1744,7 +1825,9 @@ uint PhaseChaitin::Select( ) {
       assert( !orig_mask.is_AllStack(), "All Stack does not spill" );
 
       // Assign the special spillreg register
-      tty->print_cr("        PhaseChaitin::Select 1, set_reg");
+      if (RISCV_Log_RegAlloc) {
+        tty->print_cr("        PhaseChaitin::Select 1, set_reg");
+      }
       lrg->set_reg(OptoReg::Name(spill_reg++));
       // Do not empty the regmask; leave mask_size lying around
       // for use during Spilling

@@ -82,7 +82,12 @@ bool C2Compiler::init_c2_runtime() {
 
   for( OptoReg::Name i=OptoReg::Name(0); i<OptoReg::Name(REG_COUNT); i = OptoReg::add(i,1) ) {
     VMReg r = OptoReg::as_VMReg(i);
+    if (RISCV_Log_RegAlloc) tty->print_cr("++++++++ C2Compiler::init_c2_runtime, i: %d, REG_COUNT: %d", i, REG_COUNT);
     if (r->is_valid()) {
+      if (RISCV_Log_RegAlloc) {
+        tty->print_cr("       r->name(): %s", r->name());
+        tty->print_cr("       r->value(): %d", r->value());
+      }
       OptoReg::vm2opto[r->value()] = i;
     }
   }

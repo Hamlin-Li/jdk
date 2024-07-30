@@ -3560,7 +3560,7 @@ instruct vsqrt_fp_masked(vReg dst_src, vRegMask_V0 v0) %{
 
 instruct vstring_equalsL(iRegP_R11 str1, iRegP_R13 str2, iRegI_R14 cnt, iRegI_R10 result,
                          vReg_V2_m2 v2m2, vReg_V4_m2 v4m2,
-                          vReg_V1 v1, vReg vx, vReg vy,
+                          vReg_V6 v1, vReg vx, vReg vy,
                          iRegLNoSp rx, iRegLNoSp ry, iRegLNoSp rz, iRegLNoSp r0, iRegLNoSp r1, iRegLNoSp r2, rFlagsReg cr)
 %{
   predicate(UseRVV && ((StrEqualsNode*)n)->encoding() == StrIntrinsicNode::LL);
@@ -3734,7 +3734,7 @@ instruct vstring_inflate(Universe dummy, iRegP_R10 src, iRegP_R11 dst, iRegI_R12
 
 // encode char[] to byte[] in ISO_8859_1
 instruct vencode_iso_array(iRegP_R12 src, iRegP_R11 dst, iRegI_R13 len, iRegI_R10 result,
-                           vReg_V1 v1, vReg_V2 v2, vReg_V3 v3, vRegMask_V0 v0, iRegLNoSp tmp)
+                           vReg_V6 v1, vReg_V2 v2, vReg_V3 v3, vRegMask_V0 v0, iRegLNoSp tmp)
 %{
   predicate(UseRVV && !((EncodeISOArrayNode*)n)->is_ascii());
   match(Set result (EncodeISOArray src (Binary dst len)));
@@ -3750,7 +3750,7 @@ instruct vencode_iso_array(iRegP_R12 src, iRegP_R11 dst, iRegI_R13 len, iRegI_R1
 %}
 
 instruct vencode_ascii_array(iRegP_R12 src, iRegP_R11 dst, iRegI_R13 len, iRegI_R10 result,
-                             vReg_V1 v1, vReg_V2 v2, vReg_V3 v3, vRegMask_V0 v0, iRegLNoSp tmp)
+                             vReg_V6 v1, vReg_V2 v2, vReg_V3 v3, vRegMask_V0 v0, iRegLNoSp tmp)
 %{
   predicate(UseRVV && ((EncodeISOArrayNode*)n)->is_ascii());
   match(Set result (EncodeISOArray src (Binary dst len)));
@@ -3767,7 +3767,7 @@ instruct vencode_ascii_array(iRegP_R12 src, iRegP_R11 dst, iRegI_R13 len, iRegI_
 
 // fast char[] to byte[] compression
 instruct vstring_compress(iRegP_R12 src, iRegP_R11 dst, iRegI_R13 len, iRegI_R10 result,
-                          vReg_V1 v1, vReg_V2 v2, vReg_V3 v3, vRegMask_V0 v0, iRegLNoSp tmp)
+                          vReg_V6 v1, vReg_V2 v2, vReg_V3 v3, vRegMask_V0 v0, iRegLNoSp tmp)
 %{
   predicate(UseRVV);
   match(Set result (StrCompressedCopy src (Binary dst len)));

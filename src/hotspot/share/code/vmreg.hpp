@@ -90,7 +90,7 @@ public:
       return "STACKED REG";
     }
   }
-  int value() const { return checked_cast<int>(this - first()); }
+  int value() const { return checked_cast_int(this - first()); }
   static VMReg Bad() { return BAD_REG+first(); }
   bool is_valid() const { return value() != BAD_REG; }
   bool is_stack() const { return this >= stack_0(); }

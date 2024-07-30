@@ -29,6 +29,8 @@
 // Standard include file for ADLC parser
 //
 
+extern bool RISCV_Log_ADLC;
+
 // standard library constants
 #include <iostream>
 

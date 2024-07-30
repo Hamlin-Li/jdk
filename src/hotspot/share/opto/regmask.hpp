@@ -32,6 +32,7 @@
 #include "utilities/globalDefinitions.hpp"
 
 class LRG;
+  class Node;
 
 //-------------Non-zero bit search methods used by RegMask---------------------
 // Find lowest 1, undefined if empty/0
@@ -162,8 +163,15 @@ class RegMask {
   // The last bit in the register mask indicates that the mask should repeat
   // indefinitely with ONE bits.  Returns TRUE if mask is infinite or
   // unbounded in size.  Returns FALSE if mask is finite size.
-  bool is_AllStack() const {
-    return (_RM_UP[_RM_MAX] & (uintptr_t(1) << _WordBitMask)) != 0;
+  bool is_AllStack(bool log = false) const {
+    bool res = (_RM_UP[_RM_MAX] & (uintptr_t(1) << _WordBitMask)) != 0;
+    if (log) {
+      tty->print_cr("       is_AllStack, res: %d, _RM_MAX: %d, _RM_UP[_RM_MAX]: %ld, _WordBitMask: %d", res, _RM_MAX, _RM_UP[_RM_MAX], _WordBitMask);
+      for (long i = 0; i <= _RM_MAX; i++) {
+        tty->print_cr("               i: %ld, _RM_UP[i]: %lx", i, _RM_UP[i]);
+      }
+    }
+    return res;
   }
 
   void set_AllStack() {
@@ -251,7 +259,7 @@ class RegMask {
   // Smear out partial bits to aligned adjacent bit sets.
   void smear_to_sets(const unsigned int size);
   // Test that the mask contains only aligned adjacent bit sets
-  bool is_aligned_sets(const unsigned int size) const;
+  bool is_aligned_sets(const unsigned int size, LRG* lrg=nullptr, Node* node=nullptr, Node* in=nullptr) const;
 
   // Test for a single adjacent set
   bool is_bound_set(const unsigned int size) const;

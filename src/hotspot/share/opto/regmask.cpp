@@ -311,9 +311,22 @@ void RegMask::smear_to_sets(const unsigned int size) {
 }
 
 // Assert that the register mask contains only bit sets.
-bool RegMask::is_aligned_sets(const unsigned int size) const {
+bool RegMask::is_aligned_sets(const unsigned int size, LRG* lrg, Node* node, Node* in) const {
   if (size == 1) return true;
-  assert(2 <= size && size <= 16, "update low bits table");
+  // assert(2 <= size && size <= 16, "update low bits table, size: %d", size);
+  if (!(2 <= size && size <= 16)) {
+              tty->print("            is_aligned_sets, RegMask.dump: ");
+              dump();   tty->print_cr("");
+              tty->print("            is_aligned_sets, lrg.dump: ");
+              lrg->dump();
+              tty->print("            is_aligned_sets, node->dump: ");
+              node->dump();
+              tty->print("            is_aligned_sets, in->dump: ");
+              in->dump();
+              tty->print("            in->out_RegMask()->dump: , size: %d", in->out_RegMask().Size());
+              in->out_RegMask().dump();  tty->print_cr("");
+    assert(2 <= size && size <= 16, "update low bits table, size: %d", size);
+  }
   assert(is_power_of_2(size), "sanity");
   uintptr_t low_bits_mask = low_bits[size >> 2U];
   assert(valid_watermarks(), "sanity");
@@ -323,6 +336,8 @@ bool RegMask::is_aligned_sets(const unsigned int size) const {
       uintptr_t bit = uintptr_t(1) << find_lowest_bit(bits);
       // Low bit is not odd means its mis-aligned.
       if ((bit & low_bits_mask) == 0) {
+        tty->print_cr("RegMask::is_aligned_sets 0, size: %x, _lwm: %x, _hwm: %x, bits: %lx, bit: %lx, low_bits_mask: %lx",
+                                                  size, _lwm, _hwm, bits, bit, low_bits_mask);
         return false;
       }
       // Do extra work since (bit << size) may overflow.
@@ -330,6 +345,8 @@ bool RegMask::is_aligned_sets(const unsigned int size) const {
       uintptr_t set = hi_bit + ((hi_bit-1) & ~(bit-1));
       // Check for aligned adjacent bits in this set
       if ((bits & set) != set) {
+        tty->print_cr("RegMask::is_aligned_sets 1, size: %x, _lwm: %x, _hwm: %x, bits: %lx, bit: %lx, low_bits_mask: %lx, hi_bit: %lx, set: %lx",
+                                                  size, _lwm, _hwm, bits, bit, low_bits_mask, hi_bit, set);
         return false;
       }
       bits -= set;  // Remove this set

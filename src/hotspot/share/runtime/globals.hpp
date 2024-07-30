@@ -1990,6 +1990,10 @@ const int ObjectAlignmentInBytes = 8;
                                                                             \
   product(bool, StressSecondarySupers, false, DIAGNOSTIC,                   \
           "Use a terrible hash function in order to generate many collisions.") \
+  product(bool, RISCV_Log_ADLC, false,                        \
+          "log adlc information")             \
+  product(bool, RISCV_Log_RegAlloc, false,                        \
+          "log register allocation information")
 
 // end of RUNTIME_FLAGS
 

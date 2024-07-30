@@ -42,5 +42,12 @@ constexpr T2 checked_cast(T1 thing) {
   return result;
 }
 
+template <typename T1>
+constexpr int checked_cast_int(T1 thing) {
+  int result = static_cast<int>(thing);
+  assert(static_cast<T1>(result) == thing, "must be, result: %d, thing: %ld", result, thing);
+  return result;
+}
+
 #endif // SHARE_UTILITIES_CHECKEDCAST_HPP
 

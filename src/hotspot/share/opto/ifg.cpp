@@ -315,8 +315,10 @@ void PhaseChaitin::interfere_with_live(uint lid, IndexSet* liveout) {
 void PhaseChaitin::build_ifg_virtual( ) {
   Compile::TracePhase tp("buildIFG_virt", &timers[_t_buildIFGvirtual]);
 
-  tty->print_cr("");
-  tty->print_cr("======== ========  build_ifg_virtual: ");
+  if (RISCV_Log_RegAlloc) {
+    tty->print_cr("");
+    tty->print_cr("======== ========  build_ifg_virtual: ");
+  }
   // For all blocks (in any order) do...
   for (uint i = 0; i < _cfg.number_of_blocks(); i++) {
     Block* block = _cfg.get_block(i);
@@ -398,9 +400,12 @@ void PhaseChaitin::build_ifg_virtual( ) {
         }
       }
     } // End of forall instructions in block
-    tty->print_cr("    block: %d", i);
-    tty->print("    ");
-    dump(block);
+
+    if (RISCV_Log_RegAlloc) {
+      tty->print_cr("    block: %d", i);
+      tty->print("    ");
+      dump(block);
+    }
   } // End of forall blocks
 }
 
@@ -849,8 +854,11 @@ void PhaseChaitin::print_pressure_info(Pressure& pressure, const char *str) {
  */
 uint PhaseChaitin::build_ifg_physical( ResourceArea *a ) {
   Compile::TracePhase tp("buildIFG", &timers[_t_buildIFGphysical]);
-  tty->print_cr("");
-  tty->print_cr("======== ========  build_ifg_virtual: ");
+
+  if (RISCV_Log_RegAlloc) {
+    tty->print_cr("");
+    tty->print_cr("======== ========  build_ifg_virtual: ");
+  }
 
   uint must_spill = 0;
   for (uint i = 0; i < _cfg.number_of_blocks(); i++) {
@@ -955,9 +963,11 @@ uint PhaseChaitin::build_ifg_physical( ResourceArea *a ) {
     }
 #endif
 
-    tty->print_cr("    block: %d", i);
-    tty->print("    ");
-    dump(block);
+    if (RISCV_Log_RegAlloc) {
+      tty->print_cr("    block: %d", i);
+      tty->print("    ");
+      dump(block);
+    }
   }
 
   return must_spill;

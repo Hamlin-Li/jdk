@@ -25,6 +25,8 @@
 // MAIN.CPP - Entry point for the Architecture Description Language Compiler
 #include "adlc.hpp"
 
+bool RISCV_Log_ADLC = false;
+
 //------------------------------Prototypes-------------------------------------
 static void  usage(ArchDesc& AD);          // Print usage message and exit
 static char *strip_ext(char *fname);       // Strip off name extension

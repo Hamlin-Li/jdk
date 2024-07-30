@@ -496,6 +496,7 @@ alloc_class chunk1(
 );
 
 alloc_class chunk2(
+    V31, V31_H, V31_J, V31_K,
     V0, V0_H, V0_J, V0_K,
     V1, V1_H, V1_J, V1_K,
     V2, V2_H, V2_J, V2_K,
@@ -526,8 +527,7 @@ alloc_class chunk2(
     V27, V27_H, V27_J, V27_K,
     V28, V28_H, V28_J, V28_K,
     V29, V29_H, V29_J, V29_K,
-    V30, V30_H, V30_J, V30_K,
-    V31, V31_H, V31_J, V31_K
+    V30, V30_H, V30_J, V30_K
 );
 
 alloc_class chunk3(RFLAGS);
