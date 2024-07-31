@@ -123,7 +123,9 @@ void RegMask::clear_to_pairs() {
     uintptr_t bits = _RM_UP[i];
     bits &= ((bits & fives) << 1U); // 1 hi-bit set for each pair
     bits |= (bits >> 1U);          // Smear 1 hi-bit into a pair
+    RM_tty_print_cr("...... clear_to_pairs, i: %d, _RM_UP[i] before: %lx", i, _RM_UP[i]);
     _RM_UP[i] = bits;
+    RM_tty_print_cr("...... clear_to_pairs, i: %d, _RM_UP[i] after: %lx", i, _RM_UP[i]);
   }
   assert(is_aligned_pairs(), "mask is not aligned, adjacent pairs");
 }
@@ -266,6 +268,7 @@ void RegMask::clear_to_sets(const unsigned int size) {
     for (unsigned j = 1U; j < size; j++) {
       sets = (bits & (sets << 1U)); // filter bits which produce whole sets
     }
+    // TODO
     sets |= (sets >> 1U);           // Smear 1 hi-bit into a set
     if (size > 2) {
       sets |= (sets >> 2U);         // Smear 2 hi-bits into a set
@@ -276,7 +279,9 @@ void RegMask::clear_to_sets(const unsigned int size) {
         }
       }
     }
+    RM_tty_print_cr("...... clear_to_sets, i: %d, _RM_UP[i] before: %lx", i, _RM_UP[i]);
     _RM_UP[i] = sets;
+    RM_tty_print_cr("...... clear_to_sets, i: %d, _RM_UP[i] after: %lx", i, _RM_UP[i]);
   }
   assert(is_aligned_sets(size), "mask is not aligned, adjacent sets");
 }
@@ -295,6 +300,7 @@ void RegMask::smear_to_sets(const unsigned int size) {
       sets |= (bits & low_bits_mask);  // collect partial bits
       bits  = bits >> 1U;
     }
+    // TODO
     sets |= (sets << 1U);           // Smear 1 lo-bit  into a set
     if (size > 2) {
       sets |= (sets << 2U);         // Smear 2 lo-bits into a set
@@ -305,7 +311,9 @@ void RegMask::smear_to_sets(const unsigned int size) {
         }
       }
     }
+    RM_tty_print_cr("...... smear_to_sets, i: %d, _RM_UP[i] before: %lx", i, _RM_UP[i]);
     _RM_UP[i] = sets;
+    RM_tty_print_cr("...... smear_to_sets, i: %d, _RM_UP[i] after: %lx", i, _RM_UP[i]);
   }
   assert(is_aligned_sets(size), "mask is not aligned, adjacent sets");
 }

@@ -478,6 +478,8 @@ void PhaseChaitin::Register_Allocate() {
     _live = &live;
   }
 
+  int tmpxyz = 0;
+
   // Build physical interference graph
   uint must_spill = 0;
   must_spill = build_ifg_physical(&live_arena);
@@ -492,7 +494,10 @@ void PhaseChaitin::Register_Allocate() {
       return;
     }
 
+
+    tty->print_cr("++++++++ ++++++++  Split, round: %d", tmpxyz);
     uint new_max_lrg_id = Split(_lrg_map.max_lrg_id(), &split_arena);  // Split spilling LRG everywhere
+    tty->print_cr("-------- --------  Split");
     _lrg_map.set_max_lrg_id(new_max_lrg_id);
     // Bail out if unique gets too large (ie - unique > MaxNodeLimit - 2*NodeLimitFudgeFactor)
     // or we failed to split
@@ -546,13 +551,12 @@ void PhaseChaitin::Register_Allocate() {
   // Simplify the InterFerence Graph by removing LRGs of low degree.
   // LRGs of low degree are trivially colorable.
   Simplify();
-  int tmpxyz = 0;
-  print_lrg("After Simplify() ...", tmpxyz);
+  print_lrg("After Simplify ...", tmpxyz);
 
   // Select colors by re-inserting LRGs back into the IFG in reverse order.
   // Return whether or not something spills.
   uint spills = Select( );
-  print_lrg("After Select() ...", tmpxyz);
+  print_lrg("After Select ...", tmpxyz);
 
   // If we spill, split and recycle the entire thing
   while( spills ) {
@@ -569,7 +573,10 @@ void PhaseChaitin::Register_Allocate() {
     if (!_lrg_map.max_lrg_id()) {
       return;
     }
+    tty->print_cr("++++++++ ++++++++  Split, round: %d", tmpxyz);
     uint new_max_lrg_id = Split(_lrg_map.max_lrg_id(), &split_arena);  // Split spilling LRG everywhere
+    tty->print_cr("-------- --------  Split");
+
     _lrg_map.set_max_lrg_id(new_max_lrg_id);
     // Bail out if unique gets too large (ie - unique > MaxNodeLimit - 2*NodeLimitFudgeFactor)
     C->check_node_count(2 * NodeLimitFudgeFactor, "out of nodes after split");
@@ -614,12 +621,12 @@ void PhaseChaitin::Register_Allocate() {
     // Simplify the InterFerence Graph by removing LRGs of low degree.
     // LRGs of low degree are trivially colorable.
     Simplify();
-    print_lrg("After Simplify() ...", tmpxyz);
+    print_lrg("After Simplify ...", tmpxyz);
 
     // Select colors by re-inserting LRGs back into the IFG in reverse order.
     // Return whether or not something spills.
     spills = Select();
-    print_lrg("After Select() ...", tmpxyz);
+    print_lrg("After Select ...", tmpxyz);
   }
 
   // Count number of Simplify-Select trips per coloring success.
@@ -691,6 +698,8 @@ void PhaseChaitin::Register_Allocate() {
         if (!lrg._fat_proj) {   // Must be aligned adjacent register set
           // Live ranges record the highest register in their mask.
           // We want the low register for the AD file writer's convenience.
+
+          // TODO
           OptoReg::Name hi = lrg.reg(); // Get hi register
           int num_regs = lrg.num_regs();
           if (lrg.is_scalable() && OptoReg::is_stack(hi)) {
@@ -729,6 +738,8 @@ void PhaseChaitin::Register_Allocate() {
                 tty->print_cr(">>>>>>>>>> end dump: ");
               }
             }
+
+            // TODO
             set2(i, lo);
           }
         } else {                // Misaligned; extract 2 bits
@@ -927,7 +938,11 @@ void PhaseChaitin::gather_lrg_masks( bool after_aggressive ) {
             // which may not be the actual physical register size.
             // If it is allocated in stack, we need to get the actual
             // physical length of scalable vector register.
-            lrg.set_scalable_reg_slots(Matcher::scalable_vector_reg_size(T_FLOAT));
+
+            // TODO
+            lrg.set_scalable_reg_slots(Matcher::scalable_vector_reg_size(T_FLOAT) * n->out_RegMask().Size() / RegMask::SlotsPerVecA);
+
+            tty->print_cr("=============== set_scalable_reg_slots, %d, real size: %d", n->out_RegMask().Size(), Matcher::scalable_vector_reg_size(T_FLOAT) * n->out_RegMask().Size() / RegMask::SlotsPerVecA);
           }
         }
 
@@ -941,7 +956,10 @@ void PhaseChaitin::gather_lrg_masks( bool after_aggressive ) {
             // which may not be the actual physical register size.
             // If it is allocated in stack, we need to get the actual
             // physical length of scalable predicate register.
-            lrg.set_scalable_reg_slots(Matcher::scalable_predicate_reg_slots());
+            // TODO
+            lrg.set_scalable_reg_slots(Matcher::scalable_predicate_reg_slots() * n->out_RegMask().Size() / RegMask::SlotsPerVecA);
+
+            tty->print_cr("=============== set_scalable_reg_slots predict, %d, real size: %d", n->out_RegMask().Size(), Matcher::scalable_vector_reg_size(T_FLOAT) * n->out_RegMask().Size() / RegMask::SlotsPerVecA);
           }
         }
         assert(n_type->isa_vect() == nullptr || lrg._is_vector ||
@@ -1066,8 +1084,8 @@ void PhaseChaitin::gather_lrg_masks( bool after_aggressive ) {
             n->out_RegMask().dump();  tty->print_cr("        , size: %d", n->out_RegMask().Size());
             tty->print("            lrg.set_num_regs: ");
           }
-          // TODO
 
+          // TODO
           if (is_power_of_2(n->out_RegMask().Size())) {
             lrg.set_num_regs(n->out_RegMask().Size()); // RegMask::SlotsPerVecA);
           } else {
@@ -1511,6 +1529,9 @@ static bool is_legal_reg(LRG &lrg, OptoReg::Name reg, int chunk) {
     int mask = lrg.num_regs()-1;
     if ((reg&mask) == mask)
       return true;
+    tty->print_cr("============= is_legal_reg, reg: %d, mask: %d", reg, mask);
+    lrg.dump();
+
   }
   return false;
 }
@@ -1533,6 +1554,9 @@ static OptoReg::Name find_first_set(LRG &lrg, RegMask mask, int chunk) {
         return assigned;
       }
 
+      tty->print_cr("============= find_first_set, num_regs: %d, chunk: %d", num_regs, chunk);
+      lrg.dump();
+      mask.dump();
       // mask has been cleared out by clear_to_sets(SlotsPerVecA) before choose_color, but it
       // does not work for scalable size. We have to find adjacent scalable_reg_slots() bits
       // instead of SlotsPerVecA bits.
@@ -1779,11 +1803,13 @@ uint PhaseChaitin::Select( ) {
       // If the live range is not bound, then we actually had some choices
       // to make.  In this case, the mask has more bits in it than the colors
       // chosen.  Restrict the mask to just what was picked.
-      // TODO
+
       int n_regs = lrg->num_regs();
       assert(!lrg->_is_vector || !lrg->_fat_proj, "sanity");
       if (n_regs == 1 || !lrg->_fat_proj) {
         if (Matcher::supports_scalable_vector()) {
+
+          // TODO
           assert(!lrg->_is_vector || (n_regs <= RegMask::SlotsPerVecA || is_power_of_2(n_regs)), "sanity, n_regs: %d", n_regs);
         } else {
           assert(!lrg->_is_vector || n_regs <= RegMask::SlotsPerVecZ, "sanity");
@@ -1795,6 +1821,7 @@ uint PhaseChaitin::Select( ) {
         if (lrg->is_scalable() && OptoReg::is_stack(lrg->reg())) { // stack
           n_regs = lrg->scalable_reg_slots();
         }
+
         // TODO
         for (int i = 1; i < n_regs; i++) {
           lrg->Insert(OptoReg::add(reg,-i));

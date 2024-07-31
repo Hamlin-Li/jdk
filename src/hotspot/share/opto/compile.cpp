@@ -685,7 +685,7 @@ Compile::Compile( ciEnv* ci_env, ciMethod* target, int osr_bci,
 #endif
 {
   tty->print_cr(""); tty->print_cr(""); tty->print_cr(""); tty->print_cr(""); 
-  tty->print_cr("======== ======== ======== ======== Compile: ");
+  tty->print_cr("======== ======== ======== ======== Compile standard: ");
   _method->print_name(tty);
   _method->get_Method()->print_on(tty);
   C = this;
@@ -956,6 +956,8 @@ Compile::Compile( ciEnv* ci_env,
     _in_dump_cnt(0),
 #endif
     _allowed_reasons(0) {
+  tty->print_cr(""); tty->print_cr(""); tty->print_cr(""); tty->print_cr(""); 
+  tty->print_cr("======== ======== ======== ======== Compile runtime stub: %s", _stub_name);
   C = this;
 
   TraceTime t1(nullptr, &_t_totalCompilation, CITime, false);

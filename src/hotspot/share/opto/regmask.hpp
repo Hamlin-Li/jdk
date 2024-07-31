@@ -56,6 +56,18 @@ static unsigned int find_highest_bit(uintptr_t mask) {
 // However, it means the ADLC can redefine the unroll macro and all loops
 // over register masks will be unrolled by the correct amount.
 
+#define RM_tty_print_cr(...) \
+  if (RISCV_Log_RegAlloc) tty->print_cr(__VA_ARGS__)
+
+#define RM_tty_print(...) \
+  if (RISCV_Log_RegAlloc) tty->print(__VA_ARGS__)
+
+#define RM_tty_print_cr_f(...) \
+  tty->print_cr(__VA_ARGS__)
+
+#define RM_tty_print_f(...) \
+  tty->print(__VA_ARGS__)
+
 class RegMask {
 
   friend class RegMaskIterator;
@@ -170,12 +182,20 @@ class RegMask {
       for (long i = 0; i <= _RM_MAX; i++) {
         tty->print_cr("               i: %ld, _RM_UP[i]: %lx", i, _RM_UP[i]);
       }
+      RM_tty_print("        ");
+      dump();
+      RM_tty_print_cr("");
     }
     return res;
   }
 
   void set_AllStack() {
+    RM_tty_print_cr_f("...... set_AllStack, _RM_UP[_RM_MAX] before: %lx", _RM_UP[_RM_MAX]);
     _RM_UP[_RM_MAX] |= (uintptr_t(1) << _WordBitMask);
+    RM_tty_print_cr_f("...... set_AllStack, _RM_UP[_RM_MAX] after: %lx", _RM_UP[_RM_MAX]);
+    if (_RM_UP[_RM_MAX] == 0xffffffffffffffff) {
+      // assert(false, "check");
+    }
   }
 
   // Test for being a not-empty mask.
@@ -310,7 +330,10 @@ class RegMask {
     unsigned index = r >> _LogWordBits;
     if (index > _hwm) _hwm = index;
     if (index < _lwm) _lwm = index;
+
+    RM_tty_print_cr("...... Insert, index: %d, _RM_UP[index] before: %lx", index, _RM_UP[index]);
     _RM_UP[index] |= (uintptr_t(1) << (r & _WordBitMask));
+    RM_tty_print_cr("...... Insert, index: %d, _RM_UP[index] after: %lx", index, _RM_UP[index]);
     assert(valid_watermarks(), "post-condition");
   }
 
@@ -318,7 +341,9 @@ class RegMask {
   void Remove(OptoReg::Name reg) {
     assert(reg < CHUNK_SIZE, "");
     unsigned r = (unsigned)reg;
+    RM_tty_print_cr("...... Insert, r: %d, _LogWordBits: %d, _RM_UP[r >> _LogWordBits] before: %lx", r, _LogWordBits, _RM_UP[r >> _LogWordBits]);
     _RM_UP[r >> _LogWordBits] &= ~(uintptr_t(1) << (r & _WordBitMask));
+    RM_tty_print_cr("...... Insert, r: %d, _LogWordBits: %d, _RM_UP[r >> _LogWordBits] after: %lx", r, _LogWordBits, _RM_UP[r >> _LogWordBits]);
   }
 
   // OR 'rm' into 'this'
@@ -328,7 +353,9 @@ class RegMask {
     if (_lwm > rm._lwm) _lwm = rm._lwm;
     if (_hwm < rm._hwm) _hwm = rm._hwm;
     for (unsigned i = _lwm; i <= _hwm; i++) {
+      RM_tty_print_cr("...... OR, i: %d, _RM_UP[i] before: %lx", i, _RM_UP[i]);
       _RM_UP[i] |= rm._RM_UP[i];
+      RM_tty_print_cr("...... OR, i: %d, _RM_UP[i] after: %lx", i, _RM_UP[i]);
     }
     assert(valid_watermarks(), "sanity");
   }
@@ -339,7 +366,9 @@ class RegMask {
     // Do not evaluate words outside the current watermark range, as they are
     // already zero and an &= would not change that
     for (unsigned i = _lwm; i <= _hwm; i++) {
+      RM_tty_print_cr("...... AND, i: %d, _RM_UP[i] before: %lx", i, _RM_UP[i]);
       _RM_UP[i] &= rm._RM_UP[i];
+      RM_tty_print_cr("...... AND, i: %d, _RM_UP[i] after: %lx", i, _RM_UP[i]);
     }
     // Narrow the watermarks if &rm spans a narrower range.
     // Update after to ensure non-overlapping words are zeroed out.
@@ -353,7 +382,9 @@ class RegMask {
     unsigned hwm = MIN2(_hwm, rm._hwm);
     unsigned lwm = MAX2(_lwm, rm._lwm);
     for (unsigned i = lwm; i <= hwm; i++) {
+      RM_tty_print_cr("...... SUBTRACT, i: %d, _RM_UP[i] before: %lx", i, _RM_UP[i]);
       _RM_UP[i] &= ~rm._RM_UP[i];
+      RM_tty_print_cr("...... SUBTRACT, i: %d, _RM_UP[i] after: %lx", i, _RM_UP[i]);
     }
   }
 

@@ -520,6 +520,10 @@ uint PhaseChaitin::Split(uint maxlrg, ResourceArea* split_arena) {
   uint *lrg2reach = NEW_SPLIT_ARRAY(uint, maxlrg);
   // Gather info on which LRG's are spilling, and build maps
   for (bidx = 1; bidx < maxlrg; bidx++) {
+    tty->print_cr("           PhaseChaitin::Split, bidx: %d", bidx);
+    lrgs(bidx).dump();
+    lrgs(bidx).mask().dump();
+    tty->print_cr("");
     if (lrgs(bidx).alive() && lrgs(bidx).reg() >= LRG::SPILL_REG) {
       if (lrgs(bidx).mask().is_AllStack(true)) {
         assert(false,"AllStack should color");
