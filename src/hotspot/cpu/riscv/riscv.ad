@@ -496,6 +496,7 @@ alloc_class chunk1(
 );
 
 alloc_class chunk2(
+    V31, V31_H, V31_J, V31_K,
     V0, V0_H, V0_J, V0_K,
     V1, V1_H, V1_J, V1_K,
     V2, V2_H, V2_J, V2_K,
@@ -526,8 +527,7 @@ alloc_class chunk2(
     V27, V27_H, V27_J, V27_K,
     V28, V28_H, V28_J, V28_K,
     V29, V29_H, V29_J, V29_K,
-    V30, V30_H, V30_J, V30_K,
-    V31, V31_H, V31_J, V31_K,
+    V30, V30_H, V30_J, V30_K
 );
 
 alloc_class chunk3(RFLAGS);
@@ -885,6 +885,16 @@ reg_class f2_reg(
 // Class for 64 bit register f3
 reg_class f3_reg(
     F3, F3_H
+);
+
+reg_class v2m2_reg(
+    V2, V2_H, V2_J, V2_K,
+    V3, V3_H, V3_J, V3_K
+);
+
+reg_class v4m2_reg(
+    V4, V4_H, V4_J, V4_K,
+    V5, V5_H, V5_J, V5_K
 );
 
 // class for vector register v1
@@ -3456,6 +3466,17 @@ operand vReg_V3()
   interface(REG_INTER);
 %}
 
+operand vReg_V2M2()
+%{
+  expand(vReg_V2, vReg_V3)
+  constraint(ALLOC_IN_RC(v2m2_reg));
+  match(VecA);
+  match(vReg);
+  op_cost(0);
+  format %{ %}
+  interface(REG_INTER);
+%}
+
 operand vReg_V4()
 %{
   constraint(ALLOC_IN_RC(v4_reg));
@@ -3469,6 +3490,17 @@ operand vReg_V4()
 operand vReg_V5()
 %{
   constraint(ALLOC_IN_RC(v5_reg));
+  match(VecA);
+  match(vReg);
+  op_cost(0);
+  format %{ %}
+  interface(REG_INTER);
+%}
+
+operand vReg_V4M2()
+%{
+  expand(vReg_V4, vReg_V5)
+  constraint(ALLOC_IN_RC(v4m2_reg));
   match(VecA);
   match(vReg);
   op_cost(0);

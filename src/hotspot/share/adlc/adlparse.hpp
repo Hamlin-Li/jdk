@@ -88,6 +88,7 @@ protected:
   // ***** Level 1 Parse functions *****
   void instr_parse(void);       // Parse instruction definitions
   void oper_parse(void);        // Parse operand definitions
+  void oper_expand_parse(OperandForm* oper);
   void opclass_parse(void);     // Parse operand class definitions
   void ins_attr_parse(void);    // Parse instruction attribute definitions
   void op_attr_parse(void);     // Parse operand attribute definitions

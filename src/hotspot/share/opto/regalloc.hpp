@@ -122,6 +122,17 @@ public:
     return Matcher::_regEncode[first];
   }
 
+  // Get the register encoding associated with the Node
+  int get_encode_vgr(const Node *n) const {
+    assert( n->_idx < _node_regs_max_index, "Exceeded _node_regs array");
+    OptoReg::Name first = _node_regs[n->_idx].first();
+    OptoReg::Name second = _node_regs[n->_idx].second();
+    tty->print_cr("   ============ get_encode_vgr, n->_idx: %d, first: %d, second: %d", n->_idx, first, second);
+    assert( !OptoReg::is_valid(second) || second == first+1, "" );
+    assert(OptoReg::is_reg(first), "out of range");
+    return Matcher::_regEncode[first];
+  }
+
 #ifndef PRODUCT
   static int _total_framesize;
   static int _max_framesize;

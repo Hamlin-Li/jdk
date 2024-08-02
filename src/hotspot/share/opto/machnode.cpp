@@ -43,6 +43,12 @@ int MachOper::reg(PhaseRegAlloc *ra_, const Node *node) const {
 int MachOper::reg(PhaseRegAlloc *ra_, const Node *node, int idx) const {
   return (int)(ra_->get_encode(node->in(idx)));
 }
+
+// input register lookup, corresponding to ext_format
+int MachOper::reg_vgr(PhaseRegAlloc *ra_, const Node *node, int idx) const {
+  return (int)(ra_->get_encode_vgr(node->in(idx)));
+}
+
 intptr_t  MachOper::constant() const { return 0x00; }
 relocInfo::relocType MachOper::constant_reloc() const { return relocInfo::none; }
 jdouble MachOper::constantD() const { ShouldNotReachHere(); return 0.0; }
@@ -230,7 +236,13 @@ const RegMask &MachNode::in_RegMask( uint idx ) const {
   while( idx >= skipped+num_edges ) {
     skipped += num_edges;
     opcnt++;                          // Bump operand count
-    assert( opcnt < numopnds, "Accessing non-existent operand" );
+
+    // assert( opcnt < numopnds, "Accessing non-existent operand" );
+    if (opcnt >= numopnds) {
+      dump();
+      assert( false, "Accessing non-existent operand, idx: %d, skipped: %d, num_edges: %d, opcnt: %d, numopnds: %d, num_edges: %d", 
+                                                      idx,    skipped,      num_edges,     opcnt,     numopnds,     num_edges);
+    }
     num_edges = _opnds[opcnt]->num_edges(); // leaves for next operand
   }
 

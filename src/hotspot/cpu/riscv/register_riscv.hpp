@@ -372,6 +372,42 @@ constexpr VectorRegister v29    = as_VectorRegister(29);
 constexpr VectorRegister v30    = as_VectorRegister(30);
 constexpr VectorRegister v31    = as_VectorRegister(31);
 
+class VectorRegisterGroup {
+  int _encoding;
+  int _lmul;
+
+  constexpr explicit VectorRegisterGroup(int encoding, int lmul) : _encoding(encoding), _lmul(lmul) {}
+
+public:
+  enum {
+    number_of_registers    = 32,
+    max_slots_per_register = 4
+  };
+
+  inline constexpr friend VectorRegisterGroup as_VectorRegisterGroup(int encoding, int lmul);
+
+  int operator==(const VectorRegisterGroup r) const { return _encoding == r._encoding && _lmul == r._lmul; }
+  int operator!=(const VectorRegisterGroup r) const { return _encoding != r._encoding || _lmul != r._lmul; }
+
+  VectorRegister as_vreg() {
+    return as_VectorRegister(_encoding);
+  }
+  VectorRegister as_half_vreg() {
+    return as_VectorRegister(_encoding + _lmul/2);
+  }
+  int lmul() {
+    return _lmul;
+  }
+};
+
+inline constexpr VectorRegisterGroup as_VectorRegisterGroup(int encoding, int lmul) {
+  lmul /= VectorRegisterGroup::max_slots_per_register;
+  if (lmul <= 1 || encoding < 0 || encoding >= VectorRegisterGroup::number_of_registers) {
+    return VectorRegisterGroup(-1, 0);
+  }
+  return VectorRegisterGroup(encoding, lmul);
+}
+
 // Need to know the total number of registers of all sorts for SharedInfo.
 // Define a class that exports it.
 class ConcreteRegisterImpl : public AbstractRegisterImpl {

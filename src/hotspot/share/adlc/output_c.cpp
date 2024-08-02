@@ -1766,19 +1766,42 @@ void ArchDesc::defineExpand(FILE *fp, InstructForm *node) {
           fprintf(fp, "  MachTempNode *def;\n");
           declared_def = true;
         }
-        if (op && op->_interface && op->_interface->is_RegInterface()) {
-          fprintf(fp,"  def = new MachTempNode(state->MachOperGenerator(%s));\n",
-                  machOperEnum(op->_ident));
-          fprintf(fp,"  add_req(def);\n");
-          // The operand for TEMP is already constructed during
-          // this mach node construction, see buildMachNode().
-          //
-          // int idx  = node->operand_position_format(comp->_name);
-          // fprintf(fp,"  set_opnd_array(%d, state->MachOperGenerator(%s));\n",
-          //         idx, machOperEnum(op->_ident));
+        if (false && op->_expanded_operands_num > 0) {
+          fprintf(stderr, "*************, op->_expanded_operands_num: %d\n", op->_expanded_operands_num);
+          for (int i = 0; i < op->_expanded_operands_num; i++) {
+            OperandForm *nested_op = op->_expanded_operands[i];
+            if (nested_op && nested_op->_interface && nested_op->_interface->is_RegInterface()) {
+              fprintf(fp,"  def = new MachTempNode(state->MachOperGenerator(%s));\n",
+                      machOperEnum(nested_op->_ident));
+              fprintf(fp,"  add_req(def);\n");
+              // The operand for TEMP is already constructed during
+              // this mach node construction, see buildMachNode().
+              //
+              // int idx  = node->operand_position_format(comp->_name);
+              // fprintf(fp,"  set_opnd_array(%d, state->MachOperGenerator(%s));\n",
+              //         idx, machOperEnum(nested_op->_ident));
+            } else {
+              assert(false, "can't have temps which aren't registers");
+            }
+          }
         } else {
-          assert(false, "can't have temps which aren't registers");
+          if (op && op->_interface && op->_interface->is_RegInterface()) {
+            fprintf(fp,"  def = new MachTempNode(state->MachOperGenerator(%s));\n",
+                    machOperEnum(op->_ident));
+            fprintf(fp,"  add_req(def);\n");
+            // The operand for TEMP is already constructed during
+            // this mach node construction, see buildMachNode().
+            //
+            // int idx  = node->operand_position_format(comp->_name);
+            // fprintf(fp,"  set_opnd_array(%d, state->MachOperGenerator(%s));\n",
+            //         idx, machOperEnum(op->_ident));
+          } else {
+            op->dump();
+            // op->_interface->dump();
+            assert(false, "can't have temps which aren't registers");
+          }
         }
+
       } else if (comp->isa(Component::KILL)) {
         fprintf(fp, "  // DEF/KILL %s\n", comp->_name);
 
@@ -2357,6 +2380,10 @@ private:
 #if defined(PPC64)
     if (strcmp(rep_var,"$VectorRegister") == 0)   return "as_VectorRegister";
     if (strcmp(rep_var,"$VectorSRegister") == 0)  return "as_VectorSRegister";
+#endif
+#if defined(RISCV64)
+    if (strcmp(rep_var,"$VectorRegister") == 0)   return "as_VectorRegister";
+    if (strcmp(rep_var,"$VectorRegisterGroup") == 0)   return "as_VectorRegisterGroup";
 #endif
 #if defined(AARCH64)
     if (strcmp(rep_var,"$PRegister") == 0)  return "as_PRegister";

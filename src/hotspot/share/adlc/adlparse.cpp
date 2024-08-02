@@ -476,7 +476,8 @@ void ADLParser::oper_parse(void) {
       parse_err(SYNERR, "Operands do not specify an effect\n");
     }
     else if (!strcmp(ident, "expand"))    {
-      parse_err(SYNERR, "Operands do not specify an expand\n");
+      // parse_err(SYNERR, "Operands do not specify an expand\n");
+      oper_expand_parse(oper);
     }
     else if (!strcmp(ident, "rewrite"))   {
       parse_err(SYNERR, "Operands do not specify a rewrite\n");
@@ -499,7 +500,51 @@ void ADLParser::oper_parse(void) {
     return;
   }
   // Add operand to tail of operand list
-  _AD.addForm(oper);
+  if (oper->_expanded_operands_num > 0) {
+    /*
+    oper->_expanded_operands.reset();
+    Form* cur = oper->_expanded_operands.iter();
+    fprintf(stderr, "========= expand:");
+    do {
+      _AD.addForm((OperandForm*)cur);
+      cur->dump();
+      cur = oper->_expanded_operands.iter();
+    } while (cur != nullptr);
+    */
+    _AD.addForm(oper);
+  } else {
+    _AD.addForm(oper);
+  }
+    // fprintf(stderr, "========= oper_parse:");
+}
+
+void ADLParser::oper_expand_parse(OperandForm* current) {
+  skipws();
+  next_char();                            // Skip past open paren or comma
+
+  char* prev = nullptr;
+    char common;
+  do {
+    skipws();
+    fprintf(stderr, "<<<<<<\n");
+    char* ident = get_ident();
+    fprintf(stderr, ">>>>>> oper_expand_parse: %s\n", ident);
+    const Form* oper = _globalNames[ident];
+    if (oper == nullptr) {
+      parse_err(SYNERR, "missing definition of operand: %s\n", prev);
+    }
+    current->_expanded_operands[current->_expanded_operands_num++] = oper->is_operand();
+    prev = ident;
+    // expanded_operands.addForm(const_cast<Form*>(oper));
+    common = _curchar;
+    skipws();
+    next_char();
+    fprintf(stderr, "         _curchar: %c\n", common);
+  } while (common == ',');
+
+  // next_char();                              // Consume the ')'
+    fprintf(stderr, "         exit, _curchar: %c\n", common);
+  skipws();
 }
 
 //------------------------------opclass_parse----------------------------------
@@ -4908,7 +4953,7 @@ void ADLParser::get_oplist(NameList &parameters, FormDict &operands) {
       parse_err(SYNERR, "optype identifier expected at %c\n", _curchar);
       return;
     }
-    else {
+//    else {
       const Form  *form = _globalNames[ident];
       if( form == nullptr ) {
         parse_err(SYNERR, "undefined operand type %s\n", ident);
@@ -4923,7 +4968,7 @@ void ADLParser::get_oplist(NameList &parameters, FormDict &operands) {
         return;
       }
       opclass = opc;
-    }
+//    }
     // Debugging Stuff
     if (_AD._adl_debug > 1) fprintf(stderr, "\tOperand Type: %s\t", ident);
 
@@ -4938,6 +4983,27 @@ void ADLParser::get_oplist(NameList &parameters, FormDict &operands) {
     }
     operands.Insert(ident, opclass);
     parameters.addName(ident);
+    if (true) {
+      if (oper != nullptr) {
+        fprintf(stderr, "========= get_oplist, oper->_expanded_operands_num: %d\n", oper->_expanded_operands_num);
+        for (int i = 0; i < oper->_expanded_operands_num; i++) {
+          fprintf(stderr, "           i: %d, strlen(ident): %ld\n", i, strlen(ident));
+          char* tmp = new char[1024];
+          strcpy(tmp, ident);
+          tmp[strlen(ident)] = '_';
+          tmp[strlen(ident) + 1] = '0'+(char)i;
+          tmp[strlen(ident) + 2] = '\0';
+          fprintf(stderr, "           tmp: %s\n", tmp);
+          if( _globalNames[tmp] != nullptr ) {
+            parse_err(SYNERR, "Reuse of global name %s as operand.\n",ident);
+            return;
+          }
+          operands.Insert(tmp, oper->_expanded_operands[i]);
+          oper->_expanded_operands[i]->dump();
+          parameters.addName(tmp);
+        }
+      }
+    }
 
     // Debugging Stuff
     if (_AD._adl_debug > 1) fprintf(stderr, "\tOperand Name: %s\n", ident);
@@ -5011,6 +5077,14 @@ void ADLParser::get_effectlist(FormDict &effects, FormDict &operands, bool& has_
       }
       // Add the pair to the effects table
       effects.Insert(ident, eForm);
+      for (int i = 0; i < opForm->_expanded_operands_num; i++) {
+        char* tmp = new char[1024];
+        strcpy(tmp, ident);
+        tmp[strlen(ident)] = '_';
+        tmp[strlen(ident)+1] = '0'+i;
+        tmp[strlen(ident)+2] = '\0';
+        effects.Insert(tmp, eForm);
+      }
       // Debugging Stuff
       if (_AD._adl_debug > 1) fprintf(stderr, "\tOperand Name: %s\n", ident);
     }

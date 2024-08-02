@@ -610,6 +610,8 @@ public:
   ConstructRule *_construct;  // Construction of operand data after matching
   FormatRule    *_format;     // Format for assembly generation
   NameList       _classes;    // List of opclasses which contain this oper
+  OperandForm   *_expanded_operands[8];
+  int           _expanded_operands_num;
 
   ComponentList _components;  //
 

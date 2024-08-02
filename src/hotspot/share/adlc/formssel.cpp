@@ -2151,6 +2151,7 @@ OperandForm::OperandForm(const char* id)
       _constraint= nullptr;
       _construct = nullptr;
       _format    = nullptr;
+      _expanded_operands_num = 0;
 }
 OperandForm::OperandForm(const char* id, bool ideal_only)
   : OpClassForm(id), _ideal_only(ideal_only),
@@ -2164,6 +2165,7 @@ OperandForm::OperandForm(const char* id, bool ideal_only)
       _constraint= nullptr;
       _construct = nullptr;
       _format    = nullptr;
+      _expanded_operands_num = 0;
 }
 OperandForm::~OperandForm() {
 }

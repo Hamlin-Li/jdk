@@ -38,6 +38,11 @@
                        VectorRegister vr1, VectorRegister vr2,
                        VectorRegister vrs,
                        bool is_latin, Label& DONE, Assembler::LMUL lmul);
+  void element_compare(Register r1, Register r2,
+                       Register result, Register cnt,
+                       Register tmp1, Register tmp2,
+                       VectorRegisterGroup vg1, VectorRegisterGroup vg2, VectorRegisterGroup vgs,
+                       bool is_latin, Label& DONE);
 
   void compress_bits_v(Register dst, Register src, Register mask, bool is_long);
   void expand_bits_v(Register dst, Register src, Register mask, bool is_long);
@@ -191,7 +196,10 @@
   void float_to_float16_v(VectorRegister dst, VectorRegister src, VectorRegister vtmp, Register tmp, uint vector_length);
 
   void string_equals_v(Register r1, Register r2,
-                       Register result, Register cnt1);
+                       Register result, Register cnt1,
+                       VectorRegisterGroup vg1, VectorRegisterGroup vg2,
+                       VectorRegister v6, VectorRegister vx, VectorRegister vy, VectorRegister vz, VectorRegister v00, VectorRegister v01, VectorRegister v02,
+                       Register rx, Register ry, Register rz, Register r00, Register r01, Register r02);
 
   void arrays_equals_v(Register r1, Register r2,
                        Register result, Register cnt1,
