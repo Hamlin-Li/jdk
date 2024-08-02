@@ -195,11 +195,17 @@
   void float16_to_float_v(VectorRegister dst, VectorRegister src, uint vector_length);
   void float_to_float16_v(VectorRegister dst, VectorRegister src, VectorRegister vtmp, Register tmp, uint vector_length);
 
+/*
   void string_equals_v(Register r1, Register r2,
                        Register result, Register cnt1,
                        VectorRegisterGroup vg1, VectorRegisterGroup vg2,
                        VectorRegister v6, VectorRegister vx, VectorRegister vy, VectorRegister vz, VectorRegister v00, VectorRegister v01, VectorRegister v02,
                        Register rx, Register ry, Register rz, Register r00, Register r01, Register r02);
+*/
+  void string_equals_v(Register a1, Register a2, Register result, Register cnt,
+                                        VectorRegisterGroup vg1, VectorRegisterGroup vg2,
+                                        VectorRegister vx, VectorRegister vy,
+                                        Register rx);
 
   void arrays_equals_v(Register r1, Register r2,
                        Register result, Register cnt1,
