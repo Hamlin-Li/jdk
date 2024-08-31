@@ -2148,7 +2148,6 @@ ConstructRule *ADLParser::construct_parse(void) {
   return nullptr;
 }
 
-static int regs_num = 0;
 
 //------------------------------reg_def_parse----------------------------------
 void ADLParser::reg_def_parse(void) {
@@ -2160,9 +2159,6 @@ void ADLParser::reg_def_parse(void) {
   if (rname == nullptr) {
     parse_err(SYNERR, "missing register name after reg_def\n");
     return;
-  }
-  if (RISCV_Log_ADLC) {
-    printf("&&&&&&& reg_def_parse, rname: %s, regs_num: %d\n", rname, regs_num++);
   }
 
   // Check for definition of register calling convention (save on call, ...),
@@ -2267,9 +2263,6 @@ void ADLParser::reg_def_parse(void) {
   }
 
   // Record new register definition.
-  if (RISCV_Log_ADLC) {
-    printf("          addRegDef, rname: %s\n", rname);
-  }
   _AD._register->addRegDef(rname, callconv, c_conv, idealtype, encoding, concrete);
   return;
 }

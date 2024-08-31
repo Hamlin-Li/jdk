@@ -186,7 +186,7 @@ public:
   void addReg(RegDef *regDef);  // Add a register to this class
 
   uint size() const;            // Number of registers in class
-  int regs_in_word( int wordnum, bool stack_also, FILE* fp );
+  int regs_in_word( int wordnum, bool stack_also );
 
   const RegDef *get_RegDef(const char *regDef_name) const;
 
