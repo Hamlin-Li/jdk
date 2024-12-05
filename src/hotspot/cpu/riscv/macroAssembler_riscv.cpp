@@ -4151,7 +4151,8 @@ void MacroAssembler::verify_secondary_supers_table(Register r_sub_klass,
   BLOCK_COMMENT("} verify_secondary_supers_table");
 }
 
-// Defines obj, preserves var_size_in_bytes, okay for tmp2 == var_size_in_bytes.
+// Defines obj, preserves var_size_in_bytes
+// ========> NO okay for tmp2 == var_size_in_bytes.
 void MacroAssembler::tlab_allocate(Register obj,
                                    Register var_size_in_bytes,
                                    int con_size_in_bytes,

@@ -1073,6 +1073,7 @@ static void match_alias_type(Compile* C, Node* n, Node* m) {
   if (nidx == Compile::AliasIdxTop && midx == Compile::AliasIdxRaw) {
     switch (n->Opcode()) {
     case Op_PrefetchAllocation:
+//    case Op_PrefetchAllocationZeroing:
       nidx = Compile::AliasIdxRaw;
       nat = TypeRawPtr::BOTTOM;
       break;
@@ -1752,6 +1753,8 @@ Node* Matcher::Label_Root(const Node* n, State* svec, Node* control, Node*& mem)
 
   // Call DFA to match this node, and return
   svec->DFA( n->Opcode(), n );
+
+  // MYMARK
 
 #ifdef ASSERT
   uint x;
