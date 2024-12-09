@@ -5233,7 +5233,7 @@ instruct prefetchallocZeroing( memory mem ) %{
 
   ins_encode %{
     BarrierSetAssembler *bs = BarrierSet::barrier_set()->barrier_set_assembler();
-    bs->prefetch_zero(&_masm, as_Register($mem$$base), true);
+    bs->prefetch_zero(masm, as_Register($mem$$base), true);
   %}
 
   ins_pipe(iload_prefetch);

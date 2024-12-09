@@ -79,7 +79,7 @@ JVMFlag::Error AllocatePrefetchStepSizeConstraintFunc(int value, bool verbose) {
   if (AllocatePrefetchZeroing) {
     if (!(is_power_of_2(value) && value >= wordSize)) {
       JVMFlag::printError(verbose,
-                          "AllocatePrefetchStepSize (" INTX_FORMAT ") must be a "
+                          "AllocatePrefetchStepSize (%d) must be a "
                           "power of 2 and greater or equal to %d\n", value, wordSize);
       return JVMFlag::VIOLATES_CONSTRAINT;
     }
