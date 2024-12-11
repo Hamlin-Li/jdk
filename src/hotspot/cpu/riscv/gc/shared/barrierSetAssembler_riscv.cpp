@@ -182,6 +182,7 @@ void BarrierSetAssembler::try_resolve_jobject_in_native(MacroAssembler* masm, Re
 }
 
 void BarrierSetAssembler::prefetch_zero(MacroAssembler* masm, Register new_tlab_top, bool c2) {
+  // ShouldNotReachHere();
 
   const intptr_t prefetch_lines = 1; //MAX2(AllocatePrefetchLines, AllocateInstancePrefetchLines);
   const intptr_t prefetch_size = AllocatePrefetchStepSize;
@@ -205,12 +206,45 @@ void BarrierSetAssembler::prefetch_zero(MacroAssembler* masm, Register new_tlab_
   // Store new top
   __ sd(new_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
 
+  bool DO_ASSERT = true;
+
   {
+#ifdef ASSERT
+    {
+      if (DO_ASSERT) {
+        __ sd(new_tlab_top, Address(xthread, JavaThread::tlab_top_offset()));
+        __ ld(new_tlab_top, Address(xthread, JavaThread::tlab_end_offset()));
+      }
+    }
+#endif
+
     Label LOOP;
     __ bind(LOOP);
     __ cbo_zero(current_pf_top);
     __ addi(current_pf_top, current_pf_top, prefetch_size);
+
+#ifdef ASSERT
+    {
+      if (DO_ASSERT) {
+        Label OK;
+        __ bleu(current_pf_top, new_tlab_top, OK);
+        // __ ld(t0, Address(zr, 0));
+        __ stop("overwrite...");
+        __ bind(OK);
+      }
+    }
+#endif
+
     __ bltu(current_pf_top, new_pf_top, LOOP);
+
+#ifdef ASSERT
+    {
+      if (DO_ASSERT) {
+        __ ld(new_tlab_top, Address(xthread, JavaThread::tlab_top_offset()));
+      }
+    }
+#endif
+
   }
   __ bind(SKIP_PREFETCH);
   if (c2) {
@@ -228,7 +262,7 @@ void BarrierSetAssembler::tlab_allocate(MacroAssembler* masm,
                                         Label& slow_case,
                                         bool is_far) {
   assert_different_registers(obj, tmp1, tmp2, noreg);
-  assert_different_registers(obj, var_size_in_bytes, tmp1);
+  assert_different_registers(obj, var_size_in_bytes, tmp1, t0);
 
   Register new_tlab_top = tmp1;
 
@@ -255,6 +289,7 @@ void BarrierSetAssembler::tlab_allocate(MacroAssembler* masm,
       __ bind(PASSED);
     }
 #endif
+    // ShouldNotReachHere();
     prefetch_zero(masm, new_tlab_top);
 #ifdef ASSERT
     {
