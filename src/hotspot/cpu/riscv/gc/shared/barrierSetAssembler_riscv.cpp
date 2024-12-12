@@ -191,8 +191,8 @@ void BarrierSetAssembler::prefetch_zero(MacroAssembler* masm, Register new_tlab_
 
   assert_different_registers(new_tlab_top, t0, t1, noreg);
 
-  Register current_pf_top = t1;
-  __ ld(current_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
+  Register tlab_end = t1;
+  __ ld(tlab_end, Address(xthread, JavaThread::tlab_end_offset()));
 
   // Make sure we prefetch and zero beyond object end, i.e. new_tlab_top.
   Register new_pf_top = t0;
@@ -201,6 +201,26 @@ void BarrierSetAssembler::prefetch_zero(MacroAssembler* masm, Register new_tlab_
 
   // Do we need to prefetch and zero ?
   Label SKIP_PREFETCH;
+  Label PREFETCH_ZERO;
+  __ bgeu(tlab_end, new_pf_top, PREFETCH_ZERO);
+
+  // shared in both ZERO_WORDS_LOOP and PREFETCH_ZERO.
+  Register current_pf_top = t1;
+
+  Label ZERO_WORDS_LOOP;
+  __ ld(current_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
+  __ sd(new_tlab_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
+  __ bind(ZERO_WORDS_LOOP);
+  __ sw(zr, Address(current_pf_top, 0));
+  __ addi(current_pf_top, current_pf_top, 4);
+  __ bltu(current_pf_top, new_tlab_top, ZERO_WORDS_LOOP);
+
+  __ j(SKIP_PREFETCH);
+
+
+  // prefetch-zeroing
+  __ bind(PREFETCH_ZERO);
+  __ ld(current_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
   __ bgeu(current_pf_top, new_pf_top, SKIP_PREFETCH);
 
   // Store new top
@@ -218,8 +238,8 @@ void BarrierSetAssembler::prefetch_zero(MacroAssembler* masm, Register new_tlab_
     }
 #endif
 
-    Label LOOP;
-    __ bind(LOOP);
+    Label PF_LOOP;
+    __ bind(PF_LOOP);
     __ cbo_zero(current_pf_top);
     __ addi(current_pf_top, current_pf_top, prefetch_size);
 
@@ -235,7 +255,7 @@ void BarrierSetAssembler::prefetch_zero(MacroAssembler* masm, Register new_tlab_
     }
 #endif
 
-    __ bltu(current_pf_top, new_pf_top, LOOP);
+    __ bltu(current_pf_top, new_pf_top, PF_LOOP);
 
 #ifdef ASSERT
     {
