@@ -191,42 +191,102 @@ void BarrierSetAssembler::prefetch_zero(MacroAssembler* masm, Register new_tlab_
 
   assert_different_registers(new_tlab_top, t0, t1, noreg);
 
-  Register tlab_end = t1;
-  __ ld(tlab_end, Address(xthread, JavaThread::tlab_end_offset()));
+  constexpr bool MUST_BE = true;
+
+  if (MUST_BE) { // cur_pf & (prefetch_size - 1) == 0
+    Register current_pf_top = t1;
+    __ ld(current_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
+    Label OK;
+    assert(prefetch_size == 64, "must");
+    __ andi(t0, current_pf_top, prefetch_size - 1);
+    __ beqz(t0, OK);
+    __ stop("cur_pf alignment fails ...");
+    __ bind(OK);
+  }
 
   // Make sure we prefetch and zero beyond object end, i.e. new_tlab_top.
   Register new_pf_top = t0;
-  __ andi(new_pf_top, new_tlab_top, prefetch_mask); // end no longer valid
-  __ addi(new_pf_top, new_pf_top, prefetch_distance);
-
   // Do we need to prefetch and zero ?
   Label SKIP_PREFETCH;
   Label PREFETCH_ZERO;
-  __ bgeu(tlab_end, new_pf_top, PREFETCH_ZERO);
+  Label NORMAL_ZERO;
 
-  // shared in both ZERO_WORDS_LOOP and PREFETCH_ZERO.
+{
+  Register tlab_end = t1;
+  __ ld(tlab_end, Address(xthread, JavaThread::tlab_end_offset()));
+  if (MUST_BE) { // tlab_top << tlab_end
+    Label OK;
+    __ bleu(new_tlab_top, tlab_end, OK);
+    __ stop("TLAB (top & end) check fails ...");
+    __ bind(OK);
+  }
+
+  __ andi(new_pf_top, new_tlab_top, prefetch_mask); // end no longer valid
+  __ addi(new_pf_top, new_pf_top, prefetch_distance);
+  if (MUST_BE) { // tlab_top <= new_pf
+    Label OK;
+    __ bleu(new_tlab_top, new_pf_top, OK);
+    __ stop("TLAB & PF check fails ...");
+    __ bind(OK);
+  }
+
+  __ bleu(new_pf_top, tlab_end, PREFETCH_ZERO);
+}
+
+
+
+
+// if (tlab_end < new_pf_top) {
+{
+  Label SKIP_PREFETCH_1;
+  __ bind(NORMAL_ZERO);
+
   Register current_pf_top = t1;
-
-  Label ZERO_WORDS_LOOP;
   __ ld(current_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
-  __ sd(new_tlab_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
-  __ bind(ZERO_WORDS_LOOP);
+  if (MUST_BE) { // cur_pf <= new_pf
+    Label OK;
+    __ bleu(current_pf_top, new_pf_top, OK);
+    __ stop("cur_pf & new_pf check fails 1 ...");
+    __ bind(OK);
+  }
+  __ sd(new_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
+  // reuse new_pf_top (t0) to get tlab end
+  __ ld(/* tlab end */ new_pf_top, Address(xthread, JavaThread::tlab_end_offset()));
+  Label NORMAL_ZERO_LOOP;
+  __ bind(NORMAL_ZERO_LOOP);
+  __ bgeu(current_pf_top, /* tlab end */ new_pf_top, SKIP_PREFETCH_1);
   __ sw(zr, Address(current_pf_top, 0));
   __ addi(current_pf_top, current_pf_top, 4);
-  __ bltu(current_pf_top, new_tlab_top, ZERO_WORDS_LOOP);
 
+  __ j(NORMAL_ZERO_LOOP);
+
+
+  __ bind(SKIP_PREFETCH_1);
   __ j(SKIP_PREFETCH);
+}
 
 
-  // prefetch-zeroing
+
+
+// } else { // tlab_end >= new_pf_top
+{
+  Label SKIP_PREFETCH_2;
   __ bind(PREFETCH_ZERO);
+
+  Register current_pf_top = t1;
   __ ld(current_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
-  __ bgeu(current_pf_top, new_pf_top, SKIP_PREFETCH);
+  if (MUST_BE) { // cur_pf <= new_pf
+    Label OK;
+    __ bleu(current_pf_top, new_pf_top, OK);
+    __ stop("cur_pf & new_pf check fails 2 ...");
+    __ bind(OK);
+  }
+  __ bgeu(current_pf_top, new_pf_top, SKIP_PREFETCH_2);
 
   // Store new top
   __ sd(new_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
 
-  bool DO_ASSERT = true;
+  constexpr bool DO_ASSERT = false;
 
   {
 #ifdef ASSERT
@@ -240,6 +300,7 @@ void BarrierSetAssembler::prefetch_zero(MacroAssembler* masm, Register new_tlab_
 
     Label PF_LOOP;
     __ bind(PF_LOOP);
+    __ bgeu(current_pf_top, new_pf_top, SKIP_PREFETCH_2);
     __ cbo_zero(current_pf_top);
     __ addi(current_pf_top, current_pf_top, prefetch_size);
 
@@ -255,7 +316,7 @@ void BarrierSetAssembler::prefetch_zero(MacroAssembler* masm, Register new_tlab_
     }
 #endif
 
-    __ bltu(current_pf_top, new_pf_top, PF_LOOP);
+    __ j(PF_LOOP);
 
 #ifdef ASSERT
     {
@@ -266,7 +327,33 @@ void BarrierSetAssembler::prefetch_zero(MacroAssembler* masm, Register new_tlab_
 #endif
 
   }
+
+  __ bind(SKIP_PREFETCH_2);
+  if (MUST_BE) { // cur_pf == new_pf
+    Label OK;
+    __ beq(current_pf_top, new_pf_top, OK);
+    __ stop("cur_pf & new_pf check fails 3 ...");
+    __ bind(OK);
+  }
+  __ j(SKIP_PREFETCH);
+}
+// } // if (tlab_end < new_pf_top)
+
+
+
+
   __ bind(SKIP_PREFETCH);
+  if (MUST_BE) { // cur_pf & (prefetch_size - 1) == 0
+    Register current_pf_top = t1;
+    __ ld(current_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
+    Label OK;
+    assert(prefetch_size == 64, "must");
+    __ andi(t0, current_pf_top, prefetch_size - 1);
+    __ beqz(t0, OK);
+    __ stop("cur_pf alignment fails ...");
+    __ bind(OK);
+  }
+
   if (c2) {
 //     __ stop("Check");
   }

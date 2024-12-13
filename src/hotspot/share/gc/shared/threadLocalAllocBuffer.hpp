@@ -76,7 +76,7 @@ private:
   void set_end(HeapWord* end)                    { _end = end; }
   void set_allocation_end(HeapWord* ptr)         { _allocation_end = ptr; }
   void set_top(HeapWord* top)                    { _top = top; }
-  void set_pf_top(HeapWord* pf_top)              { _pf_top = pf_top; }
+  void set_pf_top(HeapWord* pf_top)              { _pf_top = pf_top; assert((p2i(_pf_top) & (AllocatePrefetchStepSize - 1)) == 0, "must"); }
   void set_desired_size(size_t desired_size)     { _desired_size = desired_size; }
   void set_refill_waste_limit(size_t waste)      { _refill_waste_limit = waste;  }
 
