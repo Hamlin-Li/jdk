@@ -126,7 +126,7 @@ void ThreadLocalAllocBuffer::insert_filler() {
 void ThreadLocalAllocBuffer::make_parsable() {
   if (end() != nullptr) {
     invariants();
-    if (ZeroTLAB /*|| AllocatePrefetchZeroing*/) {
+    if (ZeroTLAB || AllocatePrefetchZeroing/**/) {
       retire();
     } else {
       insert_filler();
