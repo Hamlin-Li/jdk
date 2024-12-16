@@ -187,7 +187,7 @@ void BarrierSetAssembler::prefetch_zero(MacroAssembler* masm, Register new_tlab_
   const intptr_t prefetch_lines = 1; //MAX2(AllocatePrefetchLines, AllocateInstancePrefetchLines);
   const intptr_t prefetch_size = AllocatePrefetchStepSize;
   const intptr_t prefetch_mask = ~(prefetch_size - 1);
-  const intptr_t prefetch_distance = (prefetch_lines + 1) * prefetch_size;
+  const intptr_t prefetch_distance = (prefetch_lines) * prefetch_size;
 
   assert_different_registers(new_tlab_top, t0, t1, noreg);
 
@@ -221,7 +221,8 @@ void BarrierSetAssembler::prefetch_zero(MacroAssembler* masm, Register new_tlab_
     __ bind(OK);
   }
 
-  __ andi(new_pf_top, new_tlab_top, prefetch_mask); // end no longer valid
+  __ sub(new_pf_top, new_tlab_top, 1);
+  __ andi(new_pf_top, new_pf_top, prefetch_mask); // end no longer valid
   __ addi(new_pf_top, new_pf_top, prefetch_distance);
   if (MUST_BE) { // tlab_top <= new_pf
     Label OK;

@@ -315,6 +315,7 @@ HeapWord* MemAllocator::mem_allocate_inside_tlab_slow(Allocation& allocation) co
   }
 
   tlab.fill(mem, mem + _word_size, allocation._allocated_tlab_size);
+  log_debug(os, cpu)("=========== _word_size: " INTX_FORMAT, _word_size);
   return mem;
 }
 

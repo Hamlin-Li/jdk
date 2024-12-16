@@ -46,6 +46,7 @@ inline HeapWord* ThreadLocalAllocBuffer::allocate(size_t size) {
     set_top(obj + size);
 
     if (!AllocatePrefetchZeroing) {
+if (true) {
 #ifdef ASSERT
       // Skip mangling the space corresponding to the object header to
       // ensure that the returned space is not considered parsable by
@@ -53,29 +54,33 @@ inline HeapWord* ThreadLocalAllocBuffer::allocate(size_t size) {
       size_t hdr_size = oopDesc::header_size();
       Copy::fill_to_words(obj + hdr_size, size - hdr_size, badHeapWordVal);
 #endif // ASSERT
+}
     } else {
+      assert(AllocatePrefetchStepSize == 64, "Not good");
       const intptr_t prefetch_lines = 1; // MAX2(AllocatePrefetchLines, AllocateInstancePrefetchLines);
       const intptr_t prefetch_size = AllocatePrefetchStepSize;
-      assert(AllocatePrefetchStepSize == 64, "Not good");
-
       const intptr_t prefetch_mask = ~(prefetch_size - 1);
-      const intptr_t prefetch_distance = (prefetch_lines + 1) * prefetch_size;
+      const intptr_t prefetch_distance = (prefetch_lines) * prefetch_size;
 
       HeapWord *old_pf_top = pf_top();
-      HeapWord *new_pf_top = (HeapWord*)((((intptr_t)(top())) & prefetch_mask) + prefetch_distance);
+      HeapWord *new_pf_top = (HeapWord*)((((intptr_t)(top() - 1)) & prefetch_mask) + prefetch_distance);
 
       assert(top() > obj, "Must be %p %p", top(), obj);
       assert(old_pf_top >= obj, "Must be: %p %p", old_pf_top, obj);
+      assert(new_pf_top >= old_pf_top, "Must be");
       assert(new_pf_top >= top(), "Must be %p %p", new_pf_top, top());
 
-      if (old_pf_top < new_pf_top) {
+      if (new_pf_top > old_pf_top) {
+        assert(old_pf_top < end(), "must, pf top: " PTR_FORMAT ", tlab end: " PTR_FORMAT, p2i(old_pf_top), p2i(end()));
         set_pf_top(new_pf_top);
-        Copy::fill_to_aligned_words(old_pf_top, new_pf_top - old_pf_top, 0);
-      } else {
-        assert(old_pf_top == new_pf_top, "Must be");
+        if (new_pf_top < end()) {
+          Copy::fill_to_aligned_words(old_pf_top, new_pf_top - old_pf_top, 0);
+        } else {
+          Copy::fill_to_aligned_words(old_pf_top, end() - old_pf_top, 0);
+        }
       }
       // Check against new top()
-      assert(pf_top() > top(), "Must be");
+      assert(pf_top() >= top(), "Must be");
     }
 
     invariants();

@@ -209,6 +209,7 @@ void ThreadLocalAllocBuffer::initialize(HeapWord* start,
       // Move foward to first cacheline.
       prefetch_top = (HeapWord*)(((intptr_t)prefetch_top) + prefetch_size);
       assert(prefetch_top > top, "Must be");
+      assert(prefetch_top <= end, "Must be");
       Copy::fill_to_words(top, prefetch_top - top, 0);
     }
   }
@@ -278,8 +279,8 @@ void ThreadLocalAllocBuffer::startup_initialization() {
 #endif
 
   if (AllocatePrefetchZeroing) {
-    int needed_sz = AllocatePrefetchStepSize * 2;
-    assert(needed_sz == 64 * 2, "Must be: %d", needed_sz);
+    int needed_sz = AllocatePrefetchStepSize * 4;
+    assert(needed_sz == 64 * 4, "Must be: %d", needed_sz);
     _reserve_for_allocation_prefetch = MAX2(_reserve_for_allocation_prefetch, needed_sz);
   }
 
@@ -349,6 +350,7 @@ void ThreadLocalAllocBuffer::set_sample_end(bool reset_byte_accumulation) {
 
   if (heap_words_remaining > words_until_sample) {
     HeapWord* new_end = _top + words_until_sample;
+    ShouldNotReachHere();
     set_end(new_end);
     _bytes_since_last_sample_point += bytes_until_sample;
   } else {
@@ -361,6 +363,7 @@ Thread* ThreadLocalAllocBuffer::thread() {
 }
 
 void ThreadLocalAllocBuffer::set_back_allocation_end() {
+  ShouldNotReachHere();
   _end = _allocation_end;
 }
 
