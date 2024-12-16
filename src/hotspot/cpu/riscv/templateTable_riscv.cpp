@@ -3549,7 +3549,7 @@ void TemplateTable::_new() {
   if (UseTLAB) {
     __ tlab_allocate(x10, x13, 0, x12, x11, slow_case);
 
-    if (ZeroTLAB || AllocatePrefetchZeroing) {
+    if (ZeroTLAB || AllocatePrefetchZeroing/**/) {
       // the fields have been already cleared
       __ j(initialize_header);
     }

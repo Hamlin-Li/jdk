@@ -5225,7 +5225,7 @@ instruct prefetchalloc( memory mem ) %{
 %}
 
 instruct prefetchallocZeroing( memory mem ) %{
-  predicate(UseZicboz && AllocatePrefetchZeroing);
+  predicate(UseZicboz && (false || AllocatePrefetchZeroing/**/));
   match(PrefetchAllocationZeroing mem);
 
   ins_cost(ALU_COST * 1);

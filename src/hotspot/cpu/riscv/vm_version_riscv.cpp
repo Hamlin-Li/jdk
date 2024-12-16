@@ -247,7 +247,7 @@ void VM_Version::common_initialize() {
 
   assert(CacheLineSize == AllocatePrefetchStepSize, "Must be");
   assert(64 == AllocatePrefetchStepSize, "Must be");
-  assert(AllocatePrefetchZeroing, "Must be");
+  // assert(AllocatePrefetchZeroing, "Must be");
 
   if (UseRVV) {
     if (!ext_V.enabled()) {

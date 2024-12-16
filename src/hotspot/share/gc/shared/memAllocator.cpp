@@ -304,7 +304,7 @@ HeapWord* MemAllocator::mem_allocate_inside_tlab_slow(Allocation& allocation) co
          p2i(mem), min_tlab_size, new_tlab_size);
 
   // ...and clear or zap just allocated TLAB, if needed.
-  if (ZeroTLAB) {
+  if (ZeroTLAB /*|| AllocatePrefetchZeroing*/) {
     Copy::zero_to_words(mem, allocation._allocated_tlab_size);
   } else if (ZapTLAB) {
     // Skip mangling the space corresponding to the object header to

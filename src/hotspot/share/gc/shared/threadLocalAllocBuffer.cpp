@@ -126,7 +126,7 @@ void ThreadLocalAllocBuffer::insert_filler() {
 void ThreadLocalAllocBuffer::make_parsable() {
   if (end() != nullptr) {
     invariants();
-    if (ZeroTLAB) {
+    if (ZeroTLAB /*|| AllocatePrefetchZeroing*/) {
       retire();
     } else {
       insert_filler();
@@ -199,7 +199,7 @@ void ThreadLocalAllocBuffer::initialize(HeapWord* start,
                                         HeapWord* end) {
 
   HeapWord *prefetch_top = top;
-  if (AllocatePrefetchZeroing) {
+  if (false || AllocatePrefetchZeroing/**/) {
     // Make sure we start prefetch zero on the first cacheline inside tlab,
     // otherwise we may zero memory outside of tlab.
     const intptr_t prefetch_size = AllocatePrefetchStepSize;
@@ -218,7 +218,9 @@ void ThreadLocalAllocBuffer::initialize(HeapWord* start,
 
   set_start(start);
   set_top(top);
-  set_pf_top(prefetch_top);
+  if (false || AllocatePrefetchZeroing/**/) {
+    set_pf_top(prefetch_top);
+  }
   set_end(end);
   set_allocation_end(end);
   invariants();
@@ -278,7 +280,7 @@ void ThreadLocalAllocBuffer::startup_initialization() {
   }
 #endif
 
-  if (AllocatePrefetchZeroing) {
+  if (false || AllocatePrefetchZeroing/**/) {
     int needed_sz = AllocatePrefetchStepSize * 4;
     assert(needed_sz == 64 * 4, "Must be: %d", needed_sz);
     _reserve_for_allocation_prefetch = MAX2(_reserve_for_allocation_prefetch, needed_sz);

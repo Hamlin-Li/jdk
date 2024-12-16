@@ -230,7 +230,7 @@ void C1_MacroAssembler::initialize_object(Register obj, Register klass, Register
 
   initialize_header(obj, klass, noreg, tmp1, tmp2);
 
-  if (!(UseTLAB && (ZeroTLAB || AllocatePrefetchZeroing) && is_tlab_allocated)) {
+  if (!(UseTLAB && (ZeroTLAB || AllocatePrefetchZeroing/**/) && is_tlab_allocated)) {
     // clear rest of allocated space
     const Register index = tmp2;
     // 16: multiplier for threshold

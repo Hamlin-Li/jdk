@@ -1736,7 +1736,7 @@ PhaseMacroExpand::initialize_object(AllocateNode* alloc,
     // there can be two Allocates to one Initialize.  The answer in all these
     // edge cases is safety first.  It is always safe to clear immediately
     // within an Allocate, and then (maybe or maybe not) clear some more later.
-    if (!(UseTLAB && (ZeroTLAB || AllocatePrefetchZeroing))) {
+    if (!(UseTLAB && (ZeroTLAB || AllocatePrefetchZeroing/**/))) {
       rawmem = ClearArrayNode::clear_memory(control, rawmem, object,
                                             header_size, size_in_bytes,
                                             &_igvn);

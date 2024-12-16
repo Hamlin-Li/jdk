@@ -806,7 +806,7 @@ Node* BarrierSetC2::obj_allocate(PhaseMacroExpand* macro, Node* mem, Node* toobi
   macro->transform_later(needgc_false);
 
   // Fast path:
-  if (UseTLAB && AllocatePrefetchZeroing) {
+  if (UseTLAB && (false || AllocatePrefetchZeroing/**/)) {
     Node* prefetch = new PrefetchAllocationZeroingNode(mem, new_tlab_top);
 //    Node* prefetch = new PrefetchAllocationNode(mem, new_tlab_top);
     prefetch->set_req(0, needgc_false);

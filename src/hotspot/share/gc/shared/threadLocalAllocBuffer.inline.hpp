@@ -45,7 +45,7 @@ inline HeapWord* ThreadLocalAllocBuffer::allocate(size_t size) {
     // at least size below end, so the add can't wrap.
     set_top(obj + size);
 
-    if (!AllocatePrefetchZeroing) {
+    if (!(false || AllocatePrefetchZeroing/**/)) {
 if (true) {
 #ifdef ASSERT
       // Skip mangling the space corresponding to the object header to

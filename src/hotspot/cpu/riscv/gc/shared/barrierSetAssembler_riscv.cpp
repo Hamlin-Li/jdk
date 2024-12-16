@@ -386,7 +386,7 @@ void BarrierSetAssembler::tlab_allocate(MacroAssembler* masm,
   // update the tlab top pointer
   __ sd(new_tlab_top, Address(xthread, JavaThread::tlab_top_offset()));
 
-  if (AllocatePrefetchZeroing) {
+  if (false || AllocatePrefetchZeroing/**/) {
 #ifdef ASSERT
     {
       Label PASSED;
