@@ -209,7 +209,12 @@ void ThreadLocalAllocBuffer::initialize(HeapWord* start,
       // Move foward to first cacheline.
       prefetch_top = (HeapWord*)(((intptr_t)prefetch_top) + prefetch_size);
       assert(prefetch_top > top, "Must be");
-      assert(prefetch_top <= end, "Must be");
+      // In EpsilonGC, the initial distance between top and end is too close.
+      if (!UseEpsilonGC) {
+        assert(prefetch_top <= end, "Must be, start: "
+                PTR_FORMAT ", top: " PTR_FORMAT ", prefetch top: " PTR_FORMAT ", end: " PTR_FORMAT,
+                p2i(start), p2i(top), p2i(prefetch_top), p2i(end));
+      }
       Copy::fill_to_words(top, prefetch_top - top, 0);
     }
   }
