@@ -214,6 +214,9 @@ void VM_Version::common_initialize() {
     assert(CacheLineSize == 64, "Must be");
     if (FLAG_IS_DEFAULT(AllocatePrefetchStepSize)) {
       FLAG_SET_DEFAULT(AllocatePrefetchStepSize, (int)CacheLineSize);
+    } else {
+      warning("AllocatePrefetchStepSize must be CacheLineSize");
+      FLAG_SET_DEFAULT(AllocatePrefetchStepSize, (int)CacheLineSize);
     }
     assert(CacheLineSize == AllocatePrefetchStepSize, "Must be");
     if (FLAG_IS_DEFAULT(PrefetchScanIntervalInBytes)) {
