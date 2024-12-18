@@ -182,20 +182,19 @@ void BarrierSetAssembler::try_resolve_jobject_in_native(MacroAssembler* masm, Re
 }
 
 void BarrierSetAssembler::prefetch_zero(MacroAssembler* masm, Register new_tlab_top, bool c2) {
-  // ShouldNotReachHere();
+  assert(AllocatePrefetchZeroing && UseZicboz, "must");
+  assert_different_registers(new_tlab_top, t0, t1, noreg);
 
   const intptr_t prefetch_lines = 1; //MAX2(AllocatePrefetchLines, AllocateInstancePrefetchLines);
   const intptr_t prefetch_size = AllocatePrefetchStepSize;
   const intptr_t prefetch_mask = ~(prefetch_size - 1);
   const intptr_t prefetch_distance = (prefetch_lines) * prefetch_size;
 
-  assert_different_registers(new_tlab_top, t0, t1, noreg);
+  Register current_pf_top = t1;
+  __ ld(current_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
 
-  constexpr bool MUST_BE = true;
-
-  if (MUST_BE) { // cur_pf & (prefetch_size - 1) == 0
-    Register current_pf_top = t1;
-    __ ld(current_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
+#ifdef ASSERT
+  { // sanity check: cur_pf & (prefetch_size - 1) == 0
     Label OK;
     assert(prefetch_size == 64, "must");
     __ andi(t0, current_pf_top, prefetch_size - 1);
@@ -203,148 +202,58 @@ void BarrierSetAssembler::prefetch_zero(MacroAssembler* masm, Register new_tlab_
     __ stop("cur_pf alignment fails ...");
     __ bind(OK);
   }
+#endif
 
   // Make sure we prefetch and zero beyond object end, i.e. new_tlab_top.
   Register new_pf_top = t0;
+  __ andi(new_pf_top, new_tlab_top, prefetch_mask); // end no longer valid
+  __ addi(new_pf_top, new_pf_top, prefetch_distance);
+
   // Do we need to prefetch and zero ?
   Label SKIP_PREFETCH;
-  Label PREFETCH_ZERO;
-  Label NORMAL_ZERO;
+  __ beq(current_pf_top, new_pf_top, SKIP_PREFETCH);
 
-{
-  Register tlab_end = t1;
-  __ ld(tlab_end, Address(xthread, JavaThread::tlab_end_offset()));
-  if (MUST_BE) { // tlab_top << tlab_end
+#ifdef ASSERT
+  {
     Label OK;
-    __ bleu(new_tlab_top, tlab_end, OK);
-    __ stop("TLAB (top & end) check fails ...");
+    __ bltu(current_pf_top, new_pf_top, OK);
+    __ stop("cur_pf & new_pf check fails ...");
     __ bind(OK);
   }
-
-  __ sub(new_pf_top, new_tlab_top, 1);
-  __ andi(new_pf_top, new_pf_top, prefetch_mask); // end no longer valid
-  __ addi(new_pf_top, new_pf_top, prefetch_distance);
-  if (MUST_BE) { // tlab_top <= new_pf
+  {
     Label OK;
-    __ bleu(new_tlab_top, new_pf_top, OK);
-    __ stop("TLAB & PF check fails ...");
+    // Reuse new_tlab_top Register
+    Register tlab_hard_end = new_tlab_top;
+    // store new_tlab_top
+    __ sd(new_tlab_top, Address(xthread, JavaThread::tlab_top_offset()));
+    __ ld(tlab_hard_end, Address(xthread, JavaThread::tlab_end_offset()));
+    // hard end of TLAB
+    __ addi(tlab_hard_end, tlab_hard_end, ThreadLocalAllocBuffer::alignment_reserve());
+    __ addi(new_pf_top, new_pf_top, prefetch_distance);
+    __ bltu(new_pf_top, tlab_hard_end, OK);
+    __ stop("new_pf & tlab_hard_end check fails ...");
     __ bind(OK);
+    // restore new_pf_top
+    __ sub(new_pf_top, new_pf_top, prefetch_distance);
+    // restore new_tlab_top
+    __ ld(new_tlab_top, Address(xthread, JavaThread::tlab_top_offset()));
   }
-
-  __ bleu(new_pf_top, tlab_end, PREFETCH_ZERO);
-}
-
-
-
-
-// if (tlab_end < new_pf_top) {
-{
-  Label SKIP_PREFETCH_1;
-  __ bind(NORMAL_ZERO);
-
-  Register current_pf_top = t1;
-  __ ld(current_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
-  if (MUST_BE) { // cur_pf <= new_pf
-    Label OK;
-    __ bleu(current_pf_top, new_pf_top, OK);
-    __ stop("cur_pf & new_pf check fails 1 ...");
-    __ bind(OK);
-  }
-  __ sd(new_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
-  // reuse new_pf_top (t0) to get tlab end
-  __ ld(/* tlab end */ new_pf_top, Address(xthread, JavaThread::tlab_end_offset()));
-  Label NORMAL_ZERO_LOOP;
-  __ bind(NORMAL_ZERO_LOOP);
-  __ bgeu(current_pf_top, /* tlab end */ new_pf_top, SKIP_PREFETCH_1);
-  __ sw(zr, Address(current_pf_top, 0));
-  __ addi(current_pf_top, current_pf_top, 4);
-
-  __ j(NORMAL_ZERO_LOOP);
-
-
-  __ bind(SKIP_PREFETCH_1);
-  __ j(SKIP_PREFETCH);
-}
-
-
-
-
-// } else { // tlab_end >= new_pf_top
-{
-  Label SKIP_PREFETCH_2;
-  __ bind(PREFETCH_ZERO);
-
-  Register current_pf_top = t1;
-  __ ld(current_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
-  if (MUST_BE) { // cur_pf <= new_pf
-    Label OK;
-    __ bleu(current_pf_top, new_pf_top, OK);
-    __ stop("cur_pf & new_pf check fails 2 ...");
-    __ bind(OK);
-  }
-  __ bgeu(current_pf_top, new_pf_top, SKIP_PREFETCH_2);
+#endif
 
   // Store new top
   __ sd(new_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
 
-  constexpr bool DO_ASSERT = false;
-
   {
-#ifdef ASSERT
-    {
-      if (DO_ASSERT) {
-        __ sd(new_tlab_top, Address(xthread, JavaThread::tlab_top_offset()));
-        __ ld(new_tlab_top, Address(xthread, JavaThread::tlab_end_offset()));
-      }
-    }
-#endif
-
-    Label PF_LOOP;
-    __ bind(PF_LOOP);
-    __ bgeu(current_pf_top, new_pf_top, SKIP_PREFETCH_2);
+    Label LOOP;
+    __ bind(LOOP);
     __ cbo_zero(current_pf_top);
     __ addi(current_pf_top, current_pf_top, prefetch_size);
-
-#ifdef ASSERT
-    {
-      if (DO_ASSERT) {
-        Label OK;
-        __ bleu(current_pf_top, new_tlab_top, OK);
-        // __ ld(t0, Address(zr, 0));
-        __ stop("overwrite...");
-        __ bind(OK);
-      }
-    }
-#endif
-
-    __ j(PF_LOOP);
-
-#ifdef ASSERT
-    {
-      if (DO_ASSERT) {
-        __ ld(new_tlab_top, Address(xthread, JavaThread::tlab_top_offset()));
-      }
-    }
-#endif
-
+    __ bltu(current_pf_top, new_pf_top, LOOP);
   }
-
-  __ bind(SKIP_PREFETCH_2);
-  if (MUST_BE) { // cur_pf == new_pf
-    Label OK;
-    __ beq(current_pf_top, new_pf_top, OK);
-    __ stop("cur_pf & new_pf check fails 3 ...");
-    __ bind(OK);
-  }
-  __ j(SKIP_PREFETCH);
-}
-// } // if (tlab_end < new_pf_top)
-
-
-
-
   __ bind(SKIP_PREFETCH);
-  if (MUST_BE) { // cur_pf & (prefetch_size - 1) == 0
+
+#ifdef ASSERT
+  { // sanity check: cur_pf & (prefetch_size - 1) == 0
     Register current_pf_top = t1;
     __ ld(current_pf_top, Address(xthread, JavaThread::tlab_pf_top_offset()));
     Label OK;
@@ -354,10 +263,7 @@ void BarrierSetAssembler::prefetch_zero(MacroAssembler* masm, Register new_tlab_
     __ stop("cur_pf alignment fails ...");
     __ bind(OK);
   }
-
-  if (c2) {
-//     __ stop("Check");
-  }
+#endif
 }
 
 // Defines obj, preserves var_size_in_bytes, okay for tmp2 == var_size_in_bytes.

@@ -211,8 +211,8 @@ void ThreadLocalAllocBuffer::initialize(HeapWord* start,
       assert(prefetch_top > top, "Must be");
       // In EpsilonGC, the initial distance between top and end is too close.
       if (!UseEpsilonGC) {
-        assert(prefetch_top <= end, "Must be, start: "
-                PTR_FORMAT ", top: " PTR_FORMAT ", prefetch top: " PTR_FORMAT ", end: " PTR_FORMAT,
+        assert(prefetch_top < end + alignment_reserve(), "Must be, "
+                "start: " PTR_FORMAT ", top: " PTR_FORMAT ", prefetch top: " PTR_FORMAT ", end: " PTR_FORMAT,
                 p2i(start), p2i(top), p2i(prefetch_top), p2i(end));
       }
       Copy::fill_to_words(top, prefetch_top - top, 0);
