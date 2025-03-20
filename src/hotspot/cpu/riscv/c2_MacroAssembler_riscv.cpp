@@ -2157,6 +2157,34 @@ void C2_MacroAssembler::enc_cmove(int cmpFlag, Register op1, Register op2, Regis
   }
 }
 
+void C2_MacroAssembler::enc_cmove_fp(int cmpFlag, FloatRegister op1, FloatRegister op2, Register dst, Register src, bool is_single) {
+  int op_select = cmpFlag & (~unsigned_branch_mask);
+
+  switch (op_select) {
+    case BoolTest::eq:
+      cmov_eq_fp(op1, op2, dst, src, is_single);
+      break;
+    case BoolTest::ne:
+      cmov_ne_fp(op1, op2, dst, src, is_single);
+      break;
+    case BoolTest::le:
+      cmov_le_fp(op1, op2, dst, src, is_single);
+      break;
+    case BoolTest::ge:
+      cmov_ge_fp(op1, op2, dst, src, is_single);
+      break;
+    case BoolTest::lt:
+      cmov_lt_fp(op1, op2, dst, src, is_single);
+      break;
+    case BoolTest::gt:
+      cmov_gt_fp(op1, op2, dst, src, is_single);
+      break;
+    default:
+      assert(false, "unsupported compare condition");
+      ShouldNotReachHere();
+  }
+}
+
 // Set dst to NaN if any NaN input.
 void C2_MacroAssembler::minmax_fp(FloatRegister dst, FloatRegister src1, FloatRegister src2,
                                   bool is_double, bool is_min) {

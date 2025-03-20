@@ -673,6 +673,13 @@ class MacroAssembler: public Assembler {
   void cmov_gt(Register cmp1, Register cmp2, Register dst, Register src);
   void cmov_gtu(Register cmp1, Register cmp2, Register dst, Register src);
 
+  void cmov_eq_fp(FloatRegister cmp1, FloatRegister cmp2, Register dst, Register src, bool is_single);
+  void cmov_ne_fp(FloatRegister cmp1, FloatRegister cmp2, Register dst, Register src, bool is_single);
+  void cmov_le_fp(FloatRegister cmp1, FloatRegister cmp2, Register dst, Register src, bool is_single);
+  void cmov_ge_fp(FloatRegister cmp1, FloatRegister cmp2, Register dst, Register src, bool is_single);
+  void cmov_lt_fp(FloatRegister cmp1, FloatRegister cmp2, Register dst, Register src, bool is_single);
+  void cmov_gt_fp(FloatRegister cmp1, FloatRegister cmp2, Register dst, Register src, bool is_single);
+
  public:
   // We try to follow risc-v asm menomics.
   // But as we don't layout a reachable GOT,
