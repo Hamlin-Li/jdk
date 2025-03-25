@@ -10744,6 +10744,22 @@ instruct cmovP_cmpP(iRegP dst, iRegP src, iRegP op1, iRegP op2, cmpOpU cop) %{
   ins_pipe(pipe_class_compare);
 %}
 
+instruct cmovP_cmpN(iRegP dst, iRegP src, iRegN op1, iRegN op2, cmpOpU cop) %{
+  match(Set dst (CMoveP (Binary cop (CmpN op1 op2)) (Binary dst src)));
+  ins_cost(ALU_COST + BRANCH_COST);
+
+  format %{
+    "CMoveP $dst, ($op1 $cop $op2), $dst, $src\t#@cmovP_cmpN\n\t"
+  %}
+
+  ins_encode %{
+    __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
+                 as_Register($op1$$reg), as_Register($op2$$reg),
+                 as_Register($dst$$reg), as_Register($src$$reg));
+  %}
+
+  ins_pipe(pipe_class_compare);
+%}
 
 // ============================================================================
 // Procedure Call/Return Instructions
