@@ -10042,7 +10042,7 @@ instruct cmovI_cmpD(iRegINoSp dst, iRegI src, fRegD op1, fRegD op2, cmpOp cop) %
   %}
 
   ins_encode %{
-    __ enc_cmove_fp($cop$$cmpcode,
+    __ enc_cmove_fp($cop$$cmpcode | C2_MacroAssembler::double_branch_mask,
                     as_FloatRegister($op1$$reg), as_FloatRegister($op2$$reg),
                     as_Register($dst$$reg), as_Register($src$$reg), false /* is_single */);
   %}
@@ -10180,7 +10180,7 @@ instruct cmovL_cmpD(iRegLNoSp dst, iRegL src, fRegD op1, fRegD op2, cmpOp cop) %
   %}
 
   ins_encode %{
-    __ enc_cmove_fp($cop$$cmpcode,
+    __ enc_cmove_fp($cop$$cmpcode | C2_MacroAssembler::double_branch_mask,
                     as_FloatRegister($op1$$reg), as_FloatRegister($op2$$reg),
                     as_Register($dst$$reg), as_Register($src$$reg), false /* is_single */);
   %}
@@ -10252,7 +10252,7 @@ instruct cmovF_cmpU(fRegF dst, fRegF src, iRegI op1, iRegI op2, cmpOpU cop) %{
   %}
 
   ins_encode %{
-    __ enc_cmove_fp_cmp($cop$$cmpcode,
+    __ enc_cmove_fp_cmp($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_FloatRegister($dst$$reg), as_FloatRegister($src$$reg));
   %}
@@ -10286,7 +10286,7 @@ instruct cmovF_cmpUL(fRegF dst, fRegF src, iRegL op1, iRegL op2, cmpOpU cop) %{
   %}
 
   ins_encode %{
-    __ enc_cmove_fp_cmp($cop$$cmpcode,
+    __ enc_cmove_fp_cmp($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_FloatRegister($dst$$reg), as_FloatRegister($src$$reg));
   %}
@@ -10320,7 +10320,7 @@ instruct cmovF_cmpD(fRegF dst, fRegF src, fRegD op1, fRegD op2, cmpOp cop) %{
   %}
 
   ins_encode %{
-    __ enc_cmove_fp_cmp_fp($cop$$cmpcode,
+    __ enc_cmove_fp_cmp_fp($cop$$cmpcode | C2_MacroAssembler::double_branch_mask,
                     as_FloatRegister($op1$$reg), as_FloatRegister($op2$$reg),
                     as_FloatRegister($dst$$reg), as_FloatRegister($src$$reg), false);
   %}
@@ -10390,7 +10390,7 @@ instruct cmovD_cmpU(fRegD dst, fRegD src, iRegI op1, iRegI op2, cmpOpU cop) %{
   %}
 
   ins_encode %{
-    __ enc_cmove_fp_cmp($cop$$cmpcode,
+    __ enc_cmove_fp_cmp($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
   %}
@@ -10424,7 +10424,7 @@ instruct cmovD_cmpUL(fRegD dst, fRegD src, iRegL op1, iRegL op2, cmpOpU cop) %{
   %}
 
   ins_encode %{
-    __ enc_cmove_fp_cmp($cop$$cmpcode,
+    __ enc_cmove_fp_cmp($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
   %}
@@ -10458,7 +10458,7 @@ instruct cmovD_cmpD(fRegD dst, fRegD src, fRegD op1, fRegD op2, cmpOp cop) %{
   %}
 
   ins_encode %{
-    __ enc_cmove_fp_cmp_fp($cop$$cmpcode,
+    __ enc_cmove_fp_cmp_fp($cop$$cmpcode | C2_MacroAssembler::double_branch_mask,
                     as_FloatRegister($op1$$reg), as_FloatRegister($op2$$reg),
                     as_Register($dst$$reg), as_Register($src$$reg), false);
   %}
@@ -10529,7 +10529,7 @@ instruct cmovN_cmpU(iRegN dst, iRegN src, iRegI op1, iRegI op2, cmpOpU cop) %{
   %}
 
   ins_encode %{
-    __ enc_cmove($cop$$cmpcode,
+    __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
   %}
@@ -10563,7 +10563,7 @@ instruct cmovN_cmpUL(iRegN dst, iRegN src, iRegL op1, iRegL op2, cmpOpU cop) %{
   %}
 
   ins_encode %{
-    __ enc_cmove($cop$$cmpcode,
+    __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
   %}
@@ -10597,7 +10597,7 @@ instruct cmovN_cmpD(iRegN dst, iRegN src, fRegD op1, fRegD op2, cmpOp cop) %{
   %}
 
   ins_encode %{
-    __ enc_cmove_fp($cop$$cmpcode,
+    __ enc_cmove_fp($cop$$cmpcode | C2_MacroAssembler::double_branch_mask,
                     as_FloatRegister($op1$$reg), as_FloatRegister($op2$$reg),
                     as_Register($dst$$reg), as_Register($src$$reg), false /* is_single */);
   %}
@@ -10622,6 +10622,22 @@ instruct cmovN_cmpN(iRegN dst, iRegN src, iRegN op1, iRegN op2, cmpOpU cop) %{
   ins_pipe(pipe_class_compare);
 %}
 
+instruct cmovN_cmpP(iRegN dst, iRegN src, iRegP op1, iRegP op2, cmpOpU cop) %{
+  match(Set dst (CMoveN (Binary cop (CmpP op1 op2)) (Binary dst src)));
+  ins_cost(ALU_COST + BRANCH_COST);
+
+  format %{
+    "CMoveN $dst, ($op1 $cop $op2), $dst, $src\t#@cmovN_cmpP\n\t"
+  %}
+
+  ins_encode %{
+    __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
+                 as_Register($op1$$reg), as_Register($op2$$reg),
+                 as_Register($dst$$reg), as_Register($src$$reg));
+  %}
+
+  ins_pipe(pipe_class_compare);
+%}
 
 // --------- CMoveP ---------
 
@@ -10651,7 +10667,7 @@ instruct cmovP_cmpUI(iRegP dst, iRegP src, iRegI op1, iRegI op2, cmpOpU cop) %{
   %}
 
   ins_encode %{
-    __ enc_cmove($cop$$cmpcode,
+    __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
   %}
@@ -10685,7 +10701,7 @@ instruct cmovP_cmpUL(iRegP dst, iRegP src, iRegL op1, iRegL op2, cmpOpU cop) %{
   %}
 
   ins_encode %{
-    __ enc_cmove($cop$$cmpcode,
+    __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
   %}
@@ -10719,7 +10735,7 @@ instruct cmovP_cmpD(iRegP dst, iRegP src, fRegD op1, fRegD op2, cmpOp cop) %{
   %}
 
   ins_encode %{
-    __ enc_cmove_fp($cop$$cmpcode,
+    __ enc_cmove_fp($cop$$cmpcode | C2_MacroAssembler::double_branch_mask,
                     as_FloatRegister($op1$$reg), as_FloatRegister($op2$$reg),
                     as_Register($dst$$reg), as_Register($src$$reg), false /* is_single */);
   %}

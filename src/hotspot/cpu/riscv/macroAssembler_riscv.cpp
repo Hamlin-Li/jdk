@@ -1273,6 +1273,11 @@ void MacroAssembler::cmov_gtu(Register cmp1, Register cmp2, Register dst, Regist
 
 
 
+// Move src to dst only if cmp1 == cmp2,
+// otherwise leave dst unchanged, including the case where one of them is NaN.
+// Clarification:
+//   java code      :  cmp1 != cmp2 ? dst : src
+//   transformed to :  CMove dst, (cmp1 eq cmp2), dst, src
 void MacroAssembler::cmov_eq_fp(FloatRegister cmp1, FloatRegister cmp2, Register dst, Register src, bool is_single) {
   if (UseZicond) {
     if (is_single) {
@@ -1287,6 +1292,8 @@ void MacroAssembler::cmov_eq_fp(FloatRegister cmp1, FloatRegister cmp2, Register
   }
   Label no_set;
   if (is_single) {
+    // jump if cmp1 != cmp2, including the case of NaN
+    // not jump (i.e. move src to dst) if cmp1 == cmp2
     float_bne(cmp1, cmp2, no_set);
   } else {
     double_bne(cmp1, cmp2, no_set);
@@ -1295,6 +1302,11 @@ void MacroAssembler::cmov_eq_fp(FloatRegister cmp1, FloatRegister cmp2, Register
   bind(no_set);
 }
 
+// Keep dst unchanged only if cmp1 == cmp2,
+// otherwise move src to dst, including the case where one of them is NaN.
+// Clarification:
+//   java code      :  cmp1 == cmp2 ? dst : src
+//   transformed to :  CMove dst, (cmp1 ne cmp2), dst, src
 void MacroAssembler::cmov_ne_fp(FloatRegister cmp1, FloatRegister cmp2, Register dst, Register src, bool is_single) {
   if (UseZicond) {
     if (is_single) {
@@ -1309,6 +1321,8 @@ void MacroAssembler::cmov_ne_fp(FloatRegister cmp1, FloatRegister cmp2, Register
   }
   Label no_set;
   if (is_single) {
+    // jump if cmp1 == cmp2
+    // not jump (i.e. move src to dst) if cmp1 != cmp2, including the case of NaN
     float_beq(cmp1, cmp2, no_set);
   } else {
     double_beq(cmp1, cmp2, no_set);
@@ -1317,7 +1331,10 @@ void MacroAssembler::cmov_ne_fp(FloatRegister cmp1, FloatRegister cmp2, Register
   bind(no_set);
 }
 
-// when cmp1 <= cmp2 or any of them is NaN then dst = src, otherwise, dst = dst
+// When cmp1 <= cmp2 or any of them is NaN then dst = src, otherwise, dst = dst
+// Clarification:
+//   java code      :  cmp2 < cmp1 ? dst : src
+//   transformed to :  CMove dst, (cmp1 le cmp2), dst, src
 void MacroAssembler::cmov_le_fp(FloatRegister cmp1, FloatRegister cmp2, Register dst, Register src, bool is_single) {
   if (UseZicond) {
     if (is_single) {
@@ -1332,6 +1349,8 @@ void MacroAssembler::cmov_le_fp(FloatRegister cmp1, FloatRegister cmp2, Register
   }
   Label no_set;
   if (is_single) {
+    // jump if cmp1 > cmp2
+    // not jump (i.e. move src to dst) if cmp1 <= cmp2 or either is NaN
     float_bgt(cmp1, cmp2, no_set);
   } else {
     double_bgt(cmp1, cmp2, no_set);
@@ -1340,32 +1359,19 @@ void MacroAssembler::cmov_le_fp(FloatRegister cmp1, FloatRegister cmp2, Register
   bind(no_set);
 }
 
-// when cmp1 >= cmp2 or any of them is NaN then dst = src, otherwise, dst = dst
+// Clarification:
+//   java code      :  cmp1 > cmp2 ? dst : src
+//   transformed to :  CMove dst, (cmp1 le cmp2), dst, src
+// So, cmov_le_fp is invoked instead this method.
 void MacroAssembler::cmov_ge_fp(FloatRegister cmp1, FloatRegister cmp2, Register dst, Register src, bool is_single) {
-  // TODO
-  stop("cmov_ge_fp");
-  if (UseZicond) {
-    if (is_single) {
-      flt_s(t0, cmp1, cmp2);
-    } else {
-      flt_d(t0, cmp1, cmp2);
-    }
-    czero_eqz(dst, dst, t0);
-    czero_nez(t0 , src, t0);
-    orr(dst, dst, t0);
-    return;
-  }
-  Label no_set;
-  if (is_single) {
-    float_blt(cmp1, cmp2, no_set);
-  } else {
-    double_blt(cmp1, cmp2, no_set);
-  }
-  mv(dst, src);
-  bind(no_set);
+  assert(false, "cmov_ge_fp not implemented!");
+  ShouldNotReachHere();
 }
 
-// when cmp1 < cmp2 or any of them is NaN then dst = src, otherwise, dst = dst
+// When cmp1 < cmp2 or any of them is NaN then dst = src, otherwise, dst = dst
+// Clarification:
+//   java code      :  cmp2 <= cmp1 ? dst : src
+//   transformed to :  CMove dst, (cmp1 lt cmp2), dst, src
 void MacroAssembler::cmov_lt_fp(FloatRegister cmp1, FloatRegister cmp2, Register dst, Register src, bool is_single) {
   if (UseZicond) {
     if (is_single) {
@@ -1380,6 +1386,8 @@ void MacroAssembler::cmov_lt_fp(FloatRegister cmp1, FloatRegister cmp2, Register
   }
   Label no_set;
   if (is_single) {
+    // jump if cmp1 >= cmp2
+    // not jump (i.e. move src to dst) if cmp1 < cmp2 or either is NaN
     float_bge(cmp1, cmp2, no_set);
   } else {
     double_bge(cmp1, cmp2, no_set);
@@ -1388,29 +1396,12 @@ void MacroAssembler::cmov_lt_fp(FloatRegister cmp1, FloatRegister cmp2, Register
   bind(no_set);
 }
 
-// when cmp1 > cmp2 or any of them is NaN then dst = src, otherwise, dst = dst
+// Clarification:
+//   java code      :  cmp2 <= cmp1 ? dst : src
+//   transformed to :  CMove dst, (cmp1 lt cmp2), dst, src
 void MacroAssembler::cmov_gt_fp(FloatRegister cmp1, FloatRegister cmp2, Register dst, Register src, bool is_single) {
-  // TODO
-  stop("cmov_gt_fp");
-  if (UseZicond) {
-    if (is_single) {
-      fle_s(t0, cmp1, cmp2);
-    } else {
-      fle_d(t0, cmp1, cmp2);
-    }
-    czero_eqz(dst, dst, t0);
-    czero_nez(t0 , src, t0);
-    orr(dst, dst, t0);
-    return;
-  }
-  Label no_set;
-  if (is_single) {
-    float_ble(cmp1, cmp2, no_set);
-  } else {
-    double_ble(cmp1, cmp2, no_set);
-  }
-  mv(dst, src);
-  bind(no_set);
+  assert(false, "cmov_gt_fp not implemented!");
+  ShouldNotReachHere();
 }
 
 // Float compare branch instructions
