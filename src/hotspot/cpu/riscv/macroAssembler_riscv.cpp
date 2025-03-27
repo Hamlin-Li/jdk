@@ -1268,10 +1268,7 @@ void MacroAssembler::cmov_gtu(Register cmp1, Register cmp2, Register dst, Regist
   bind(no_set);
 }
 
-
-
-
-
+// ----------- cmove, compare float -----------
 
 // Move src to dst only if cmp1 == cmp2,
 // otherwise leave dst unchanged, including the case where one of them is NaN.
@@ -1364,8 +1361,7 @@ void MacroAssembler::cmov_le_fp(FloatRegister cmp1, FloatRegister cmp2, Register
 //   transformed to :  CMove dst, (cmp1 le cmp2), dst, src
 // So, cmov_le_fp is invoked instead this method.
 void MacroAssembler::cmov_ge_fp(FloatRegister cmp1, FloatRegister cmp2, Register dst, Register src, bool is_single) {
-  assert(false, "cmov_ge_fp not implemented!");
-  ShouldNotReachHere();
+  Unimplemented();
 }
 
 // When cmp1 < cmp2 or any of them is NaN then dst = src, otherwise, dst = dst
@@ -1400,8 +1396,7 @@ void MacroAssembler::cmov_lt_fp(FloatRegister cmp1, FloatRegister cmp2, Register
 //   java code      :  cmp2 <= cmp1 ? dst : src
 //   transformed to :  CMove dst, (cmp1 lt cmp2), dst, src
 void MacroAssembler::cmov_gt_fp(FloatRegister cmp1, FloatRegister cmp2, Register dst, Register src, bool is_single) {
-  assert(false, "cmov_gt_fp not implemented!");
-  ShouldNotReachHere();
+  Unimplemented();
 }
 
 // Float compare branch instructions
