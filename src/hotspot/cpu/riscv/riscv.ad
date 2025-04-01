@@ -9948,8 +9948,9 @@ instruct far_cmpP_narrowOop_imm0_branch(cmpOpEqNe cmp, iRegN op1, immP0 zero, la
 
 // --------- CMoveI ---------
 
-instruct cmovI_cmpI(iRegINoSp dst, iRegI src, iRegI op1, iRegI op2, cmpOp cop) %{
+instruct cmovI_cmpI(iRegINoSp dst, iRegI src, iRegI op1, iRegI op2, cmpOp cop, rFlagsReg cr) %{
   match(Set dst (CMoveI (Binary cop (CmpI op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -9965,8 +9966,9 @@ instruct cmovI_cmpI(iRegINoSp dst, iRegI src, iRegI op1, iRegI op2, cmpOp cop) %
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovI_cmpU(iRegINoSp dst, iRegI src, iRegI op1, iRegI op2, cmpOpU cop) %{
+instruct cmovI_cmpU(iRegINoSp dst, iRegI src, iRegI op1, iRegI op2, cmpOpU cop, rFlagsReg cr) %{
   match(Set dst (CMoveI (Binary cop (CmpU op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -9982,8 +9984,9 @@ instruct cmovI_cmpU(iRegINoSp dst, iRegI src, iRegI op1, iRegI op2, cmpOpU cop) 
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovI_cmpL(iRegINoSp dst, iRegI src, iRegL op1, iRegL op2, cmpOp cop) %{
+instruct cmovI_cmpL(iRegINoSp dst, iRegI src, iRegL op1, iRegL op2, cmpOp cop, rFlagsReg cr) %{
   match(Set dst (CMoveI (Binary cop (CmpL op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -9999,8 +10002,9 @@ instruct cmovI_cmpL(iRegINoSp dst, iRegI src, iRegL op1, iRegL op2, cmpOp cop) %
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovI_cmpUL(iRegINoSp dst, iRegI src, iRegL op1, iRegL op2, cmpOpU cop) %{
+instruct cmovI_cmpUL(iRegINoSp dst, iRegI src, iRegL op1, iRegL op2, cmpOpU cop, rFlagsReg cr) %{
   match(Set dst (CMoveI (Binary cop (CmpUL op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10016,8 +10020,9 @@ instruct cmovI_cmpUL(iRegINoSp dst, iRegI src, iRegL op1, iRegL op2, cmpOpU cop)
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovI_cmpF(iRegINoSp dst, iRegI src, fRegF op1, fRegF op2, cmpOp cop) %{
+instruct cmovI_cmpF(iRegINoSp dst, iRegI src, fRegF op1, fRegF op2, cmpOp cop, rFlagsReg cr) %{
   match(Set dst (CMoveI (Binary cop (CmpF op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10025,6 +10030,7 @@ instruct cmovI_cmpF(iRegINoSp dst, iRegI src, fRegF op1, fRegF op2, cmpOp cop) %
   %}
 
   ins_encode %{
+    // __ stop("cmovI_cmpF");
     __ enc_cmove_fp($cop$$cmpcode,
                     as_FloatRegister($op1$$reg), as_FloatRegister($op2$$reg),
                     as_Register($dst$$reg), as_Register($src$$reg), true /* is_single */);
@@ -10033,8 +10039,9 @@ instruct cmovI_cmpF(iRegINoSp dst, iRegI src, fRegF op1, fRegF op2, cmpOp cop) %
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovI_cmpD(iRegINoSp dst, iRegI src, fRegD op1, fRegD op2, cmpOp cop) %{
+instruct cmovI_cmpD(iRegINoSp dst, iRegI src, fRegD op1, fRegD op2, cmpOp cop, rFlagsReg cr) %{
   match(Set dst (CMoveI (Binary cop (CmpD op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10042,6 +10049,7 @@ instruct cmovI_cmpD(iRegINoSp dst, iRegI src, fRegD op1, fRegD op2, cmpOp cop) %
   %}
 
   ins_encode %{
+    // __ stop("cmovI_cmpD");
     __ enc_cmove_fp($cop$$cmpcode | C2_MacroAssembler::double_branch_mask,
                     as_FloatRegister($op1$$reg), as_FloatRegister($op2$$reg),
                     as_Register($dst$$reg), as_Register($src$$reg), false /* is_single */);
@@ -10050,8 +10058,9 @@ instruct cmovI_cmpD(iRegINoSp dst, iRegI src, fRegD op1, fRegD op2, cmpOp cop) %
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovI_cmpN(iRegINoSp dst, iRegI src, iRegN op1, iRegN op2, cmpOpU cop) %{
+instruct cmovI_cmpN(iRegINoSp dst, iRegI src, iRegN op1, iRegN op2, cmpOpU cop, rFlagsReg cr) %{
   match(Set dst (CMoveI (Binary cop (CmpN op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10067,8 +10076,9 @@ instruct cmovI_cmpN(iRegINoSp dst, iRegI src, iRegN op1, iRegN op2, cmpOpU cop) 
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovI_cmpP(iRegINoSp dst, iRegI src, iRegP op1, iRegP op2, cmpOpU cop) %{
+instruct cmovI_cmpP(iRegINoSp dst, iRegI src, iRegP op1, iRegP op2, cmpOpU cop, rFlagsReg cr) %{
   match(Set dst (CMoveI (Binary cop (CmpP op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10086,8 +10096,9 @@ instruct cmovI_cmpP(iRegINoSp dst, iRegI src, iRegP op1, iRegP op2, cmpOpU cop) 
 
 // --------- CMoveL ---------
 
-instruct cmovL_cmpL(iRegLNoSp dst, iRegL src, iRegL op1, iRegL op2, cmpOp cop) %{
+instruct cmovL_cmpL(iRegLNoSp dst, iRegL src, iRegL op1, iRegL op2, cmpOp cop, rFlagsReg cr) %{
   match(Set dst (CMoveL (Binary cop (CmpL op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10103,8 +10114,9 @@ instruct cmovL_cmpL(iRegLNoSp dst, iRegL src, iRegL op1, iRegL op2, cmpOp cop) %
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovL_cmpUL(iRegLNoSp dst, iRegL src, iRegL op1, iRegL op2, cmpOpU cop) %{
+instruct cmovL_cmpUL(iRegLNoSp dst, iRegL src, iRegL op1, iRegL op2, cmpOpU cop, rFlagsReg cr) %{
   match(Set dst (CMoveL (Binary cop (CmpUL op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10120,8 +10132,9 @@ instruct cmovL_cmpUL(iRegLNoSp dst, iRegL src, iRegL op1, iRegL op2, cmpOpU cop)
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovL_cmpI(iRegLNoSp dst, iRegL src, iRegI op1, iRegI op2, cmpOp cop) %{
+instruct cmovL_cmpI(iRegLNoSp dst, iRegL src, iRegI op1, iRegI op2, cmpOp cop, rFlagsReg cr) %{
   match(Set dst (CMoveL (Binary cop (CmpI op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10137,8 +10150,9 @@ instruct cmovL_cmpI(iRegLNoSp dst, iRegL src, iRegI op1, iRegI op2, cmpOp cop) %
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovL_cmpU(iRegLNoSp dst, iRegL src, iRegI op1, iRegI op2, cmpOpU cop) %{
+instruct cmovL_cmpU(iRegLNoSp dst, iRegL src, iRegI op1, iRegI op2, cmpOpU cop, rFlagsReg cr) %{
   match(Set dst (CMoveL (Binary cop (CmpU op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10154,8 +10168,9 @@ instruct cmovL_cmpU(iRegLNoSp dst, iRegL src, iRegI op1, iRegI op2, cmpOpU cop) 
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovL_cmpF(iRegLNoSp dst, iRegL src, fRegF op1, fRegF op2, cmpOp cop) %{
+instruct cmovL_cmpF(iRegLNoSp dst, iRegL src, fRegF op1, fRegF op2, cmpOp cop, rFlagsReg cr) %{
   match(Set dst (CMoveL (Binary cop (CmpF op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10163,6 +10178,7 @@ instruct cmovL_cmpF(iRegLNoSp dst, iRegL src, fRegF op1, fRegF op2, cmpOp cop) %
   %}
 
   ins_encode %{
+    // __ stop("cmovL_cmpF");
     __ enc_cmove_fp($cop$$cmpcode,
                     as_FloatRegister($op1$$reg), as_FloatRegister($op2$$reg),
                     as_Register($dst$$reg), as_Register($src$$reg), true /* is_single */);
@@ -10171,8 +10187,9 @@ instruct cmovL_cmpF(iRegLNoSp dst, iRegL src, fRegF op1, fRegF op2, cmpOp cop) %
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovL_cmpD(iRegLNoSp dst, iRegL src, fRegD op1, fRegD op2, cmpOp cop) %{
+instruct cmovL_cmpD(iRegLNoSp dst, iRegL src, fRegD op1, fRegD op2, cmpOp cop, rFlagsReg cr) %{
   match(Set dst (CMoveL (Binary cop (CmpD op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10180,6 +10197,7 @@ instruct cmovL_cmpD(iRegLNoSp dst, iRegL src, fRegD op1, fRegD op2, cmpOp cop) %
   %}
 
   ins_encode %{
+    // __ stop("cmovL_cmpD");
     __ enc_cmove_fp($cop$$cmpcode | C2_MacroAssembler::double_branch_mask,
                     as_FloatRegister($op1$$reg), as_FloatRegister($op2$$reg),
                     as_Register($dst$$reg), as_Register($src$$reg), false /* is_single */);
@@ -10188,8 +10206,9 @@ instruct cmovL_cmpD(iRegLNoSp dst, iRegL src, fRegD op1, fRegD op2, cmpOp cop) %
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovL_cmpN(iRegLNoSp dst, iRegL src, iRegN op1, iRegN op2, cmpOpU cop) %{
+instruct cmovL_cmpN(iRegLNoSp dst, iRegL src, iRegN op1, iRegN op2, cmpOpU cop, rFlagsReg cr) %{
   match(Set dst (CMoveL (Binary cop (CmpN op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10205,8 +10224,9 @@ instruct cmovL_cmpN(iRegLNoSp dst, iRegL src, iRegN op1, iRegN op2, cmpOpU cop) 
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovL_cmpP(iRegLNoSp dst, iRegL src, iRegP op1, iRegP op2, cmpOpU cop) %{
+instruct cmovL_cmpP(iRegLNoSp dst, iRegL src, iRegP op1, iRegP op2, cmpOpU cop, rFlagsReg cr) %{
   match(Set dst (CMoveL (Binary cop (CmpP op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10224,8 +10244,9 @@ instruct cmovL_cmpP(iRegLNoSp dst, iRegL src, iRegP op1, iRegP op2, cmpOpU cop) 
 
 // --------- CMoveN ---------
 
-instruct cmovN_cmpI(iRegN dst, iRegN src, iRegI op1, iRegI op2, cmpOp cop) %{
+instruct cmovN_cmpI(iRegN dst, iRegN src, iRegI op1, iRegI op2, cmpOp cop, rFlagsReg cr) %{
   match(Set dst (CMoveN (Binary cop (CmpI op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10233,6 +10254,7 @@ instruct cmovN_cmpI(iRegN dst, iRegN src, iRegI op1, iRegI op2, cmpOp cop) %{
   %}
 
   ins_encode %{
+    // __ stop("cmovN_cmpI");
     __ enc_cmove($cop$$cmpcode,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
@@ -10241,15 +10263,17 @@ instruct cmovN_cmpI(iRegN dst, iRegN src, iRegI op1, iRegI op2, cmpOp cop) %{
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovN_cmpU(iRegN dst, iRegN src, iRegI op1, iRegI op2, cmpOpU cop) %{
+instruct cmovN_cmpU(iRegN dst, iRegN src, iRegI op1, iRegI op2, cmpOpU cop, rFlagsReg cr) %{
   match(Set dst (CMoveN (Binary cop (CmpU op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
-    "CMoveN $dst, ($op1 $cop $op2), $dst, $src\t#@cmovN_cmpI\n\t"
+    "CMoveN $dst, ($op1 $cop $op2), $dst, $src\t#@cmovN_cmpU\n\t"
   %}
 
   ins_encode %{
+    __ stop("cmovN_cmpU");
     __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
@@ -10258,8 +10282,9 @@ instruct cmovN_cmpU(iRegN dst, iRegN src, iRegI op1, iRegI op2, cmpOpU cop) %{
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovN_cmpL(iRegN dst, iRegN src, iRegL op1, iRegL op2, cmpOp cop) %{
+instruct cmovN_cmpL(iRegN dst, iRegN src, iRegL op1, iRegL op2, cmpOp cop, rFlagsReg cr) %{
   match(Set dst (CMoveN (Binary cop (CmpL op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10267,6 +10292,7 @@ instruct cmovN_cmpL(iRegN dst, iRegN src, iRegL op1, iRegL op2, cmpOp cop) %{
   %}
 
   ins_encode %{
+    __ stop("cmovN_cmpL");
     __ enc_cmove($cop$$cmpcode,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
@@ -10275,8 +10301,9 @@ instruct cmovN_cmpL(iRegN dst, iRegN src, iRegL op1, iRegL op2, cmpOp cop) %{
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovN_cmpUL(iRegN dst, iRegN src, iRegL op1, iRegL op2, cmpOpU cop) %{
+instruct cmovN_cmpUL(iRegN dst, iRegN src, iRegL op1, iRegL op2, cmpOpU cop, rFlagsReg cr) %{
   match(Set dst (CMoveN (Binary cop (CmpUL op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10284,6 +10311,7 @@ instruct cmovN_cmpUL(iRegN dst, iRegN src, iRegL op1, iRegL op2, cmpOpU cop) %{
   %}
 
   ins_encode %{
+    __ stop("cmovN_cmpUL");
     __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
@@ -10292,8 +10320,9 @@ instruct cmovN_cmpUL(iRegN dst, iRegN src, iRegL op1, iRegL op2, cmpOpU cop) %{
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovN_cmpF(iRegN dst, iRegN src, fRegF op1, fRegF op2, cmpOp cop) %{
+instruct cmovN_cmpF(iRegN dst, iRegN src, fRegF op1, fRegF op2, cmpOp cop, rFlagsReg cr) %{
   match(Set dst (CMoveN (Binary cop (CmpF op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10301,6 +10330,7 @@ instruct cmovN_cmpF(iRegN dst, iRegN src, fRegF op1, fRegF op2, cmpOp cop) %{
   %}
 
   ins_encode %{
+    __ stop("cmovN_cmpF");
     __ enc_cmove_fp($cop$$cmpcode,
                     as_FloatRegister($op1$$reg), as_FloatRegister($op2$$reg),
                     as_Register($dst$$reg), as_Register($src$$reg), true /* is_single */);
@@ -10309,8 +10339,9 @@ instruct cmovN_cmpF(iRegN dst, iRegN src, fRegF op1, fRegF op2, cmpOp cop) %{
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovN_cmpD(iRegN dst, iRegN src, fRegD op1, fRegD op2, cmpOp cop) %{
+instruct cmovN_cmpD(iRegN dst, iRegN src, fRegD op1, fRegD op2, cmpOp cop, rFlagsReg cr) %{
   match(Set dst (CMoveN (Binary cop (CmpD op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10318,6 +10349,7 @@ instruct cmovN_cmpD(iRegN dst, iRegN src, fRegD op1, fRegD op2, cmpOp cop) %{
   %}
 
   ins_encode %{
+    // __ stop("cmovN_cmpD");
     __ enc_cmove_fp($cop$$cmpcode | C2_MacroAssembler::double_branch_mask,
                     as_FloatRegister($op1$$reg), as_FloatRegister($op2$$reg),
                     as_Register($dst$$reg), as_Register($src$$reg), false /* is_single */);
@@ -10326,8 +10358,9 @@ instruct cmovN_cmpD(iRegN dst, iRegN src, fRegD op1, fRegD op2, cmpOp cop) %{
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovN_cmpN(iRegN dst, iRegN src, iRegN op1, iRegN op2, cmpOpU cop) %{
+instruct cmovN_cmpN(iRegN dst, iRegN src, iRegN op1, iRegN op2, cmpOpU cop, rFlagsReg cr) %{
   match(Set dst (CMoveN (Binary cop (CmpN op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10335,6 +10368,7 @@ instruct cmovN_cmpN(iRegN dst, iRegN src, iRegN op1, iRegN op2, cmpOpU cop) %{
   %}
 
   ins_encode %{
+    // __ stop("cmovN_cmpN");
     __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
@@ -10343,8 +10377,9 @@ instruct cmovN_cmpN(iRegN dst, iRegN src, iRegN op1, iRegN op2, cmpOpU cop) %{
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovN_cmpP(iRegN dst, iRegN src, iRegP op1, iRegP op2, cmpOpU cop) %{
+instruct cmovN_cmpP(iRegN dst, iRegN src, iRegP op1, iRegP op2, cmpOpU cop, rFlagsReg cr) %{
   match(Set dst (CMoveN (Binary cop (CmpP op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10352,6 +10387,7 @@ instruct cmovN_cmpP(iRegN dst, iRegN src, iRegP op1, iRegP op2, cmpOpU cop) %{
   %}
 
   ins_encode %{
+    __ stop("cmovN_cmpP");
     __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
@@ -10362,8 +10398,9 @@ instruct cmovN_cmpP(iRegN dst, iRegN src, iRegP op1, iRegP op2, cmpOpU cop) %{
 
 // --------- CMoveP ---------
 
-instruct cmovP_cmpI(iRegP dst, iRegP src, iRegI op1, iRegI op2, cmpOp cop) %{
+instruct cmovP_cmpI(iRegP dst, iRegP src, iRegI op1, iRegI op2, cmpOp cop, rFlagsReg cr) %{
   match(Set dst (CMoveP (Binary cop (CmpI op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10371,6 +10408,7 @@ instruct cmovP_cmpI(iRegP dst, iRegP src, iRegI op1, iRegI op2, cmpOp cop) %{
   %}
 
   ins_encode %{
+    // __ stop("cmovP_cmpI");
     __ enc_cmove($cop$$cmpcode,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
@@ -10379,8 +10417,9 @@ instruct cmovP_cmpI(iRegP dst, iRegP src, iRegI op1, iRegI op2, cmpOp cop) %{
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovP_cmpUI(iRegP dst, iRegP src, iRegI op1, iRegI op2, cmpOpU cop) %{
+instruct cmovP_cmpUI(iRegP dst, iRegP src, iRegI op1, iRegI op2, cmpOpU cop, rFlagsReg cr) %{
   match(Set dst (CMoveP (Binary cop (CmpU op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10388,6 +10427,7 @@ instruct cmovP_cmpUI(iRegP dst, iRegP src, iRegI op1, iRegI op2, cmpOpU cop) %{
   %}
 
   ins_encode %{
+    __ stop("cmovP_cmpUI");
     __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
@@ -10396,8 +10436,9 @@ instruct cmovP_cmpUI(iRegP dst, iRegP src, iRegI op1, iRegI op2, cmpOpU cop) %{
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovP_cmpL(iRegP dst, iRegP src, iRegL op1, iRegL op2, cmpOp cop) %{
+instruct cmovP_cmpL(iRegP dst, iRegP src, iRegL op1, iRegL op2, cmpOp cop, rFlagsReg cr) %{
   match(Set dst (CMoveP (Binary cop (CmpL op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10405,6 +10446,7 @@ instruct cmovP_cmpL(iRegP dst, iRegP src, iRegL op1, iRegL op2, cmpOp cop) %{
   %}
 
   ins_encode %{
+    __ stop("cmovP_cmpL");
     __ enc_cmove($cop$$cmpcode,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
@@ -10413,8 +10455,9 @@ instruct cmovP_cmpL(iRegP dst, iRegP src, iRegL op1, iRegL op2, cmpOp cop) %{
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovP_cmpUL(iRegP dst, iRegP src, iRegL op1, iRegL op2, cmpOpU cop) %{
+instruct cmovP_cmpUL(iRegP dst, iRegP src, iRegL op1, iRegL op2, cmpOpU cop, rFlagsReg cr) %{
   match(Set dst (CMoveP (Binary cop (CmpUL op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10422,6 +10465,7 @@ instruct cmovP_cmpUL(iRegP dst, iRegP src, iRegL op1, iRegL op2, cmpOpU cop) %{
   %}
 
   ins_encode %{
+    __ stop("cmovP_cmpUL");
     __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
@@ -10430,8 +10474,9 @@ instruct cmovP_cmpUL(iRegP dst, iRegP src, iRegL op1, iRegL op2, cmpOpU cop) %{
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovP_cmpF(iRegP dst, iRegP src, fRegF op1, fRegF op2, cmpOp cop) %{
+instruct cmovP_cmpF(iRegP dst, iRegP src, fRegF op1, fRegF op2, cmpOp cop, rFlagsReg cr) %{
   match(Set dst (CMoveP (Binary cop (CmpF op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10439,6 +10484,7 @@ instruct cmovP_cmpF(iRegP dst, iRegP src, fRegF op1, fRegF op2, cmpOp cop) %{
   %}
 
   ins_encode %{
+    __ stop("cmovP_cmpF");
     __ enc_cmove_fp($cop$$cmpcode,
                     as_FloatRegister($op1$$reg), as_FloatRegister($op2$$reg),
                     as_Register($dst$$reg), as_Register($src$$reg), true /* is_single */);
@@ -10447,8 +10493,9 @@ instruct cmovP_cmpF(iRegP dst, iRegP src, fRegF op1, fRegF op2, cmpOp cop) %{
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovP_cmpD(iRegP dst, iRegP src, fRegD op1, fRegD op2, cmpOp cop) %{
+instruct cmovP_cmpD(iRegP dst, iRegP src, fRegD op1, fRegD op2, cmpOp cop, rFlagsReg cr) %{
   match(Set dst (CMoveP (Binary cop (CmpD op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10456,6 +10503,7 @@ instruct cmovP_cmpD(iRegP dst, iRegP src, fRegD op1, fRegD op2, cmpOp cop) %{
   %}
 
   ins_encode %{
+    __ stop("cmovP_cmpD");
     __ enc_cmove_fp($cop$$cmpcode | C2_MacroAssembler::double_branch_mask,
                     as_FloatRegister($op1$$reg), as_FloatRegister($op2$$reg),
                     as_Register($dst$$reg), as_Register($src$$reg), false /* is_single */);
@@ -10464,8 +10512,9 @@ instruct cmovP_cmpD(iRegP dst, iRegP src, fRegD op1, fRegD op2, cmpOp cop) %{
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovP_cmpP(iRegP dst, iRegP src, iRegP op1, iRegP op2, cmpOpU cop) %{
+instruct cmovP_cmpP(iRegP dst, iRegP src, iRegP op1, iRegP op2, cmpOpU cop, rFlagsReg cr) %{
   match(Set dst (CMoveP (Binary cop (CmpP op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10473,6 +10522,7 @@ instruct cmovP_cmpP(iRegP dst, iRegP src, iRegP op1, iRegP op2, cmpOpU cop) %{
   %}
 
   ins_encode %{
+    // __ stop("cmovP_cmpP");
     __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
@@ -10481,8 +10531,9 @@ instruct cmovP_cmpP(iRegP dst, iRegP src, iRegP op1, iRegP op2, cmpOpU cop) %{
   ins_pipe(pipe_class_compare);
 %}
 
-instruct cmovP_cmpN(iRegP dst, iRegP src, iRegN op1, iRegN op2, cmpOpU cop) %{
+instruct cmovP_cmpN(iRegP dst, iRegP src, iRegN op1, iRegN op2, cmpOpU cop, rFlagsReg cr) %{
   match(Set dst (CMoveP (Binary cop (CmpN op1 op2)) (Binary dst src)));
+  effect(KILL cr);
   ins_cost(ALU_COST + BRANCH_COST);
 
   format %{
@@ -10490,6 +10541,7 @@ instruct cmovP_cmpN(iRegP dst, iRegP src, iRegN op1, iRegN op2, cmpOpU cop) %{
   %}
 
   ins_encode %{
+    // __ stop("cmovP_cmpN");
     __ enc_cmove($cop$$cmpcode | C2_MacroAssembler::unsigned_branch_mask,
                  as_Register($op1$$reg), as_Register($op2$$reg),
                  as_Register($dst$$reg), as_Register($src$$reg));
