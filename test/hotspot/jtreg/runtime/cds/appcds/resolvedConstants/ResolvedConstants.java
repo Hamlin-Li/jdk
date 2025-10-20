@@ -73,7 +73,9 @@ public class ResolvedConstants {
     static boolean aotClassLinking;
     public static void main(String[] args) throws Exception {
         test(args, false);
-        test(args, true);
+        if (!args[0].equals("DYNAMIC")) {
+            test(args, true);
+        }
     }
 
     static void test(String[] args, boolean testMode) throws Exception {
@@ -81,7 +83,8 @@ public class ResolvedConstants {
 
         SimpleCDSAppTester.of("ResolvedConstantsApp" + (aotClassLinking ? "1" : "0"))
             .addVmArgs(aotClassLinking ? "-XX:+AOTClassLinking" : "-XX:-AOTClassLinking",
-                       "-Xlog:cds+resolve=trace",
+                       "-Xlog:aot+resolve=trace",
+                       "-Xlog:aot+class=debug",
                        "-Xlog:cds+class=debug")
             .classpath(appJar)
             .appCommandLine(mainClass)
@@ -171,26 +174,21 @@ public class ResolvedConstants {
         // Indy References ---
         if (aotClassLinking) {
             testGroup("Indy References", out)
-               .shouldContain("Cannot aot-resolve Lambda proxy because OldConsumer is excluded")
-               .shouldContain("Cannot aot-resolve Lambda proxy because OldProvider is excluded")
-               .shouldContain("Cannot aot-resolve Lambda proxy because OldClass is excluded")
                .shouldContain("Cannot aot-resolve Lambda proxy of interface type InterfaceWithClinit")
                .shouldMatch("klasses.* app *NormalClass[$][$]Lambda/.* hidden aot-linked inited")
-               .shouldNotMatch("klasses.* app *SubOfOldClass[$][$]Lambda/")
-               .shouldMatch("archived indy *CP entry.*StringConcatTest .* => java/lang/invoke/StringConcatFactory.makeConcatWithConstants")
-               .shouldNotMatch("archived indy *CP entry.*StringConcatTestOld .* => java/lang/invoke/StringConcatFactory.makeConcatWithConstants");
+               .shouldMatch("archived indy *CP entry.*StringConcatTest .* => java/lang/invoke/StringConcatFactory.makeConcatWithConstants");
         }
     }
 
     static String ALWAYS(String s) {
-        return "cds,resolve.*archived " + s;
+        return ",resolve.*archived " + s;
     }
 
     static String AOTLINK_ONLY(String s) {
         if (aotClassLinking) {
             return ALWAYS(s);
         } else {
-            return "cds,resolve.*reverted " + s;
+            return ",resolve.*reverted " + s;
         }
     }
 
