@@ -830,7 +830,7 @@ Node *PhaseIdealLoop::conditional_move( Node *region ) {
   }
   // Check for highly predictable branch.  No point in CMOV'ing if
   // we are going to predict accurately all the time.
-  if (C->use_cmove() && (cmp_op == Op_CmpF || cmp_op == Op_CmpD)) {
+  if (C->use_cmove() && (cmp_op == Op_CmpF || cmp_op == Op_CmpD || cmp_op == Op_CmpI || cmp_op == Op_CmpL)) {
     //keep going
   } else if (iff->_prob < infrequent_prob ||
       iff->_prob > (1.0f - infrequent_prob))
