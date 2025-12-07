@@ -1448,7 +1448,9 @@ static OptoReg::Name find_first_set(LRG& lrg, RegMask& mask) {
       // instead of SlotsPerVecA bits.
       assigned = mask.find_first_set(lrg, num_regs); // find highest valid reg
       while (OptoReg::is_valid(assigned)) {
-        assert(mask.can_represent(assigned), "sanity");
+        if (!mask.can_represent(assigned)) {
+          return OptoReg::Bad;
+        }
         // Verify the found reg has scalable_reg_slots() bits set.
         if (mask.is_valid_reg(assigned, num_regs)) {
           return assigned;
