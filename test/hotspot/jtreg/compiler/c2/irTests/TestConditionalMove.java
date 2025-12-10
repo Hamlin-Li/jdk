@@ -354,6 +354,32 @@ public class TestConditionalMove {
         return (a <= b) ? c : d;
     }
 
+    // Unsigned comparison: Char
+    //    Char for F
+    private float cmoveCEQforF(char a, char b, float c, float d) {
+        return Character.compare(a, b) == 0 ? c : d;
+    }
+
+    private float cmoveCNEforF(char a, char b, float c, float d) {
+        return Character.compare(a, b) != 0 ? c : d;
+    }
+
+    private float cmoveCGTforF(char a, char b, float c, float d) {
+        return Character.compare(a, b) > 0 ? c : d;
+    }
+
+    private float cmoveCGEforF(char a, char b, float c, float d) {
+        return Character.compare(a, b) >= 0 ? c : d;
+    }
+
+    private float cmoveCLTforF(char a, char b, float c, float d) {
+        return Character.compare(a, b) < 0 ? c : d;
+    }
+
+    private float cmoveCLEforF(char a, char b, float c, float d) {
+        return Character.compare(a, b) <= 0 ? c : d;
+    }
+
     // Unsigned comparison: I/L
     //    I for I
     private int cmoveUIEQforI(int a, int b, int c, int d) {
@@ -1950,6 +1976,141 @@ public class TestConditionalMove {
         }
     }
 
+
+    // Unsigned comparison: Char
+    //     Char fo F
+    @Test
+    @IR(counts = {IRNode.LOAD_VECTOR_I,     IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.LOAD_VECTOR_F,     IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.VECTOR_MASK_CMP_I, IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.VECTOR_BLEND_F,    IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.STORE_VECTOR, ">0"},
+        applyIfCPUFeatureOr = {"avx", "true", "asimd", "true", "rvv", "true"},
+        applyIf = {"UseVectorCmov", "true"})
+    @IR(failOn = {IRNode.STORE_VECTOR},
+        applyIf = {"UseVectorCmov", "false"})
+    @IR(counts = {IRNode.CMOVE_F, ">0", IRNode.CMP_U, ">0"},
+        applyIf = {"UseVectorCmov", "false"},
+            applyIfPlatform = {"riscv64", "true"})
+    private static void testCMoveCEQforF(char[] a, char[] b, float[] c, float[] d, float[] r, float[] r2) {
+        for (int i = 0; i < a.length; i++) {
+            float cc = c[i];
+            float dd = d[i];
+            r2[i] = cc + dd;
+            r[i] = Character.compare(a[i], b[i]) == 0 ? cc : dd;
+        }
+    }
+
+    @Test
+    @IR(counts = {IRNode.LOAD_VECTOR_I,     IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.LOAD_VECTOR_F,     IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.VECTOR_MASK_CMP_I, IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.VECTOR_BLEND_F,    IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.STORE_VECTOR, ">0"},
+        applyIfCPUFeatureOr = {"avx", "true", "asimd", "true", "rvv", "true"},
+        applyIf = {"UseVectorCmov", "true"})
+    @IR(failOn = {IRNode.STORE_VECTOR},
+        applyIf = {"UseVectorCmov", "false"})
+    @IR(counts = {IRNode.CMOVE_F, ">0", IRNode.CMP_U, ">0"},
+        applyIf = {"UseVectorCmov", "false"},
+            applyIfPlatform = {"riscv64", "true"})
+    private static void testCMoveCNEforF(char[] a, char[] b, float[] c, float[] d, float[] r, float[] r2) {
+        for (int i = 0; i < a.length; i++) {
+            float cc = c[i];
+            float dd = d[i];
+            r2[i] = cc + dd;
+            r[i] = Character.compare(a[i], b[i]) != 0 ? cc : dd;
+        }
+    }
+
+    @Test
+    @IR(counts = {IRNode.LOAD_VECTOR_I,     IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.LOAD_VECTOR_F,     IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.VECTOR_MASK_CMP_I, IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.VECTOR_BLEND_F,    IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.STORE_VECTOR, ">0"},
+        applyIfCPUFeatureOr = {"avx", "true", "asimd", "true", "rvv", "true"},
+        applyIf = {"UseVectorCmov", "true"})
+    @IR(failOn = {IRNode.STORE_VECTOR},
+        applyIf = {"UseVectorCmov", "false"})
+    @IR(counts = {IRNode.CMOVE_F, ">0", IRNode.CMP_U, ">0"},
+        applyIf = {"UseVectorCmov", "false"},
+            applyIfPlatform = {"riscv64", "true"})
+    private static void testCMoveCGTforF(char[] a, char[] b, float[] c, float[] d, float[] r, float[] r2) {
+        for (int i = 0; i < a.length; i++) {
+            float cc = c[i];
+            float dd = d[i];
+            r2[i] = cc + dd;
+            r[i] = Character.compare(a[i], b[i]) > 0 ? cc : dd;
+        }
+    }
+
+    @Test
+    @IR(counts = {IRNode.LOAD_VECTOR_I,     IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.LOAD_VECTOR_F,     IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.VECTOR_MASK_CMP_I, IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.VECTOR_BLEND_F,    IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.STORE_VECTOR, ">0"},
+        applyIfCPUFeatureOr = {"avx", "true", "asimd", "true", "rvv", "true"},
+        applyIf = {"UseVectorCmov", "true"})
+    @IR(failOn = {IRNode.STORE_VECTOR},
+        applyIf = {"UseVectorCmov", "false"})
+    @IR(counts = {IRNode.CMOVE_F, ">0", IRNode.CMP_U, ">0"},
+        applyIf = {"UseVectorCmov", "false"},
+            applyIfPlatform = {"riscv64", "true"})
+    private static void testCMoveCGEforF(char[] a, char[] b, float[] c, float[] d, float[] r, float[] r2) {
+        for (int i = 0; i < a.length; i++) {
+            float cc = c[i];
+            float dd = d[i];
+            r2[i] = cc + dd;
+            r[i] = Character.compare(a[i], b[i]) >= 0 ? cc : dd;
+        }
+    }
+
+    @Test
+    @IR(counts = {IRNode.LOAD_VECTOR_I,     IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.LOAD_VECTOR_F,     IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.VECTOR_MASK_CMP_I, IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.VECTOR_BLEND_F,    IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.STORE_VECTOR, ">0"},
+        applyIfCPUFeatureOr = {"avx", "true", "asimd", "true", "rvv", "true"},
+        applyIf = {"UseVectorCmov", "true"})
+    @IR(failOn = {IRNode.STORE_VECTOR},
+        applyIf = {"UseVectorCmov", "false"})
+    @IR(counts = {IRNode.CMOVE_F, ">0", IRNode.CMP_U, ">0"},
+        applyIf = {"UseVectorCmov", "false"},
+            applyIfPlatform = {"riscv64", "true"})
+    private static void testCMoveCLTforF(char[] a, char[] b, float[] c, float[] d, float[] r, float[] r2) {
+        for (int i = 0; i < a.length; i++) {
+            float cc = c[i];
+            float dd = d[i];
+            r2[i] = cc + dd;
+            r[i] = Character.compare(a[i], b[i]) < 0 ? cc : dd;
+        }
+    }
+
+    @Test
+    @IR(counts = {IRNode.LOAD_VECTOR_I,     IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.LOAD_VECTOR_F,     IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.VECTOR_MASK_CMP_I, IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.VECTOR_BLEND_F,    IRNode.VECTOR_SIZE + "min(max_int, max_float)", ">0",
+                  IRNode.STORE_VECTOR, ">0"},
+        applyIfCPUFeatureOr = {"avx", "true", "asimd", "true", "rvv", "true"},
+        applyIf = {"UseVectorCmov", "true"})
+    @IR(failOn = {IRNode.STORE_VECTOR},
+        applyIf = {"UseVectorCmov", "false"})
+    @IR(counts = {IRNode.CMOVE_F, ">0", IRNode.CMP_U, ">0"},
+        applyIf = {"UseVectorCmov", "false"},
+            applyIfPlatform = {"riscv64", "true"})
+    private static void testCMoveCLEforF(char[] a, char[] b, float[] c, float[] d, float[] r, float[] r2) {
+        for (int i = 0; i < a.length; i++) {
+            float cc = c[i];
+            float dd = d[i];
+            r2[i] = cc + dd;
+            r[i] = Character.compare(a[i], b[i]) <= 0 ? cc : dd;
+        }
+    }
+
     // Unsigned comparison: I/L
     //     I fo I
     @Test
@@ -3116,6 +3277,14 @@ public class TestConditionalMove {
                  "testCMoveLLTforD",
                  "testCMoveLLEforD",
                  // Unsigned
+                 //     Char for F
+                 "testCMoveCEQforF",
+                 "testCMoveCNEforF",
+                 "testCMoveCGTforF",
+                 "testCMoveCGEforF",
+                 "testCMoveCLTforF",
+                 "testCMoveCLEforF",
+                 // Unsigned
                  //     I for I
                  "testCMoveUIEQforI",
                  "testCMoveUINEforI",
@@ -3184,6 +3353,11 @@ public class TestConditionalMove {
                  "testCMoveFGTforFCmpCon1",
                  "testCMoveFGTforFCmpCon2"})
     private void testCMove_runner_two() {
+        char[] aC = new char[SIZE];
+        char[] bC = new char[SIZE];
+        char[] cC = new char[SIZE];
+        char[] dC = new char[SIZE];
+        char[] rC = new char[SIZE];
         int[] aI = new int[SIZE];
         int[] bI = new int[SIZE];
         int[] cI = new int[SIZE];
@@ -3205,6 +3379,10 @@ public class TestConditionalMove {
         double[] dD = new double[SIZE];
         double[] rD = new double[SIZE];
 
+        init(aC);
+        init(bC);
+        init(cC);
+        init(dC);
         init(aI);
         init(bI);
         init(cI);
@@ -3469,6 +3647,38 @@ public class TestConditionalMove {
         testCMoveLLEforD(aL, bL, cD, dD, rD, rD);
         for (int i = 0; i < SIZE; i++) {
             Asserts.assertEquals(rD[i], cmoveLLEforD(aL[i], bL[i], cD[i], dD[i]));
+        }
+
+        // Unsigned
+        //     Char for F
+        testCMoveCEQforF(aC, bC, cF, dF, rF, rF);
+        for (int i = 0; i < SIZE; i++) {
+            Asserts.assertEquals(rF[i], cmoveCEQforF(aC[i], bC[i], cF[i], dF[i]));
+        }
+
+        testCMoveCNEforF(aC, bC, cF, dF, rF, rF);
+        for (int i = 0; i < SIZE; i++) {
+            Asserts.assertEquals(rF[i], cmoveCNEforF(aC[i], bC[i], cF[i], dF[i]));
+        }
+
+        testCMoveCGTforF(aC, bC, cF, dF, rF, rF);
+        for (int i = 0; i < SIZE; i++) {
+            Asserts.assertEquals(rF[i], cmoveCGTforF(aC[i], bC[i], cF[i], dF[i]));
+        }
+
+        testCMoveCGEforF(aC, bC, cF, dF, rF, rF);
+        for (int i = 0; i < SIZE; i++) {
+            Asserts.assertEquals(rF[i], cmoveCGEforF(aC[i], bC[i], cF[i], dF[i]));
+        }
+
+        testCMoveCLTforF(aC, bC, cF, dF, rF, rF);
+        for (int i = 0; i < SIZE; i++) {
+            Asserts.assertEquals(rF[i], cmoveCLTforF(aC[i], bC[i], cF[i], dF[i]));
+        }
+
+        testCMoveCLEforF(aC, bC, cF, dF, rF, rF);
+        for (int i = 0; i < SIZE; i++) {
+            Asserts.assertEquals(rF[i], cmoveCLEforF(aC[i], bC[i], cF[i], dF[i]));
         }
 
         // Unsigned
@@ -3770,6 +3980,12 @@ public class TestConditionalMove {
         testCMoveFGTforFCmpCon2(aF, bF[0], cF, dF, rF, rF);
         for (int i = 0; i < SIZE; i++) {
             Asserts.assertEquals(rF[i], cmoveFGTforF(aF[i], bF[0], cF[i], dF[i]));
+        }
+    }
+
+    private static void init(char[] a) {
+        for (int i = 0; i < SIZE; i++) {
+            a[i] = (char)RANDOM.nextInt();
         }
     }
 
